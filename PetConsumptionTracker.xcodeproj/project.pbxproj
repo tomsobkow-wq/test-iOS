@@ -22,6 +22,9 @@
 		A1000013 /* ConsumptionTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000013 /* ConsumptionTracker.swift */; };
 		A1000014 /* DefaultPetImages.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000014 /* DefaultPetImages.swift */; };
 		A1000015 /* EditPetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000015 /* EditPetView.swift */; };
+		A1000016 /* AddMedicineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000016 /* AddMedicineView.swift */; };
+		A1000017 /* VetVisitsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000017 /* VetVisitsView.swift */; };
+		A1000018 /* AddVetVisitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000018 /* AddVetVisitView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -41,6 +44,9 @@
 		A2000013 /* ConsumptionTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsumptionTracker.swift; sourceTree = "<group>"; };
 		A2000014 /* DefaultPetImages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultPetImages.swift; sourceTree = "<group>"; };
 		A2000015 /* EditPetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditPetView.swift; sourceTree = "<group>"; };
+		A2000016 /* AddMedicineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMedicineView.swift; sourceTree = "<group>"; };
+		A2000017 /* VetVisitsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VetVisitsView.swift; sourceTree = "<group>"; };
+		A2000018 /* AddVetVisitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddVetVisitView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -102,6 +108,9 @@
 				A2000009 /* PetDetailView.swift */,
 				A2000012 /* PetRowView.swift */,
 				A2000015 /* EditPetView.swift */,
+				A2000016 /* AddMedicineView.swift */,
+				A2000017 /* VetVisitsView.swift */,
+				A2000018 /* AddVetVisitView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -207,6 +216,9 @@
 				A1000013 /* ConsumptionTracker.swift in Sources */,
 				A1000014 /* DefaultPetImages.swift in Sources */,
 				A1000015 /* EditPetView.swift in Sources */,
+				A1000016 /* AddMedicineView.swift in Sources */,
+				A1000017 /* VetVisitsView.swift in Sources */,
+				A1000018 /* AddVetVisitView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
