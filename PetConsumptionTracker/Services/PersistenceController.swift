@@ -42,15 +42,13 @@ struct PersistenceController {
     let container: NSPersistentContainer
 
     init(inMemory: Bool = false) {
-        container = NSPersistentContainer(name: "PetModel")
+        // Create the managed object model programmatically before initializing the container
+        let model = PersistenceController.createManagedObjectModel()
+        container = NSPersistentContainer(name: "PetModel", managedObjectModel: model)
 
         if inMemory {
             container.persistentStoreDescriptions.first!.url = URL(fileURLWithPath: "/dev/null")
         }
-
-        // Create the managed object model programmatically
-        let model = createManagedObjectModel()
-        container.managedObjectModel.entities = model.entities
 
         container.loadPersistentStores { (storeDescription, error) in
             if let error = error as NSError? {
@@ -62,7 +60,7 @@ struct PersistenceController {
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
     }
 
-    private func createManagedObjectModel() -> NSManagedObjectModel {
+    private static func createManagedObjectModel() -> NSManagedObjectModel {
         let model = NSManagedObjectModel()
 
         // Create PetEntity
