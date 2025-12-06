@@ -12,6 +12,7 @@ struct PetDetailView: View {
     @State private var showingAddMedicineSheet = false
     @State private var showingVetVisitsSheet = false
     @State private var showingAddVetVisitSheet = false
+    @State private var showingGuidanceSheet = false
 
     var body: some View {
         ScrollView {
@@ -75,13 +76,27 @@ struct PetDetailView: View {
         } message: {
             Text("This will permanently delete \(pet.name) and all their data.")
         }
+        .sheet(isPresented: $showingGuidanceSheet) {
+            if let species = PetSpecies(rawValue: pet.species) {
+                PetGuidanceView(species: species)
+                    .presentationDetents([.medium, .large])
+            } else {
+                PetGuidanceView(species: .other)
+                    .presentationDetents([.medium, .large])
+            }
+        }
     }
 
     // MARK: - Header View
 
     private var petHeaderView: some View {
         VStack(spacing: 12) {
+    private var petHeaderView: some View {
+        VStack(spacing: 12) {
             PetImageView(pet: pet, size: 120)
+                .onTapGesture {
+                    showingGuidanceSheet = true
+                }
 
             VStack(spacing: 4) {
                 Text(pet.name)
@@ -109,7 +124,8 @@ struct PetDetailView: View {
                     timeRemaining: pet.foodTimeRemaining,
                     color: pet.isFoodLow ? .red : .orange,
                     duration: pet.foodDurationHours,
-                    onRefill: { refillFood() }
+                    onRefill: { refillFood() },
+                    onEdit: { showingEditSheet = true }
                 )
 
                 consumptionCard(
@@ -119,7 +135,8 @@ struct PetDetailView: View {
                     timeRemaining: pet.waterTimeRemaining,
                     color: pet.isWaterLow ? .red : .blue,
                     duration: pet.waterDurationHours,
-                    onRefill: { refillWater() }
+                    onRefill: { refillWater() },
+                    onEdit: { showingEditSheet = true }
                 )
             }
             .padding(.horizontal)
@@ -471,7 +488,8 @@ struct PetDetailView: View {
         timeRemaining: TimeInterval,
         color: Color,
         duration: Int32,
-        onRefill: @escaping () -> Void
+        onRefill: @escaping () -> Void,
+        onEdit: @escaping () -> Void
     ) -> some View {
         VStack(spacing: 16) {
             HStack {
@@ -480,6 +498,12 @@ struct PetDetailView: View {
                 Text(title)
                     .font(.headline)
                 Spacer()
+                
+                Button(action: onEdit) {
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.title3)
+                        .foregroundColor(.gray.opacity(0.6))
+                }
             }
 
             ZStack {

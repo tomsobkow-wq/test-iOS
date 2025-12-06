@@ -371,4 +371,67 @@ enum PetSpecies: String, CaseIterable {
         case .other: return 48
         }
     }
+
+    var waterGuidance: String {
+        switch self {
+        case .dog:
+            return "Provide constant access to fresh, clean water. Clean bowls regularly to prevent bacteria buildup."
+        case .cat:
+            return "Cats have low thirst drive. Provide fresh water daily, consider a fountain or wide bowl. Wet food helps hydration."
+        case .bird:
+            return "Provide clean, fresh tap water daily in a drinker or bowl. Ensure it's not contaminated and clean dishes daily."
+        case .fish:
+            return "Maintain clean water with filtration and weekly partial changes (25%). Dechlorinate tap water and monitor pH/temp."
+        case .rabbit:
+            return "Always provide fresh, clean water in a heavy bowl (preferred) or hanging bottle. Check twice daily."
+        case .hamster:
+            return "Fresh water must be available at all times via a clean bottle. Clean the bottle daily."
+        case .turtle:
+            return "Provide a large pool of clean, dechlorinated water. Needs frequent changes (50% weekly) as they are messy eaters."
+        case .other:
+            return "Provide fresh, clean water daily. Research specific needs for your pet's species."
+        }
+    }
+
+    var foodGuidance: String {
+        switch self {
+        case .dog:
+            return "Feed a balanced diet appropriate for age/breed. Avoid adding water to kibble unless advised. Watch portion sizes."
+        case .cat:
+            return "Meat-based diet is essential. Wet food supports urinary health. Small, frequent meals are best. Limit treats <10%."
+        case .bird:
+            return "75% formulated pellets, 25% fresh veggies/fruits. Seeds/nuts should only be treats. Avoid avocado and chocolate."
+        case .fish:
+            return "Feed small amounts (what they eat in 2-3 mins) 1-2 times daily. Flakes or pellets specific to species. Do not overfeed."
+        case .rabbit:
+            return "80-90% unlimited Timothy hay is vital. 2 cups fresh greens daily. Limit pellets to ~1/4 cup. Avoid sugary treats."
+        case .hamster:
+            return "Staple diet of high-quality hamster pellets/blocks. Supplement with small amounts of veggies/fruit a few times a week."
+        case .turtle:
+            return "Commercial floating pellets daily. Supplement with leafy greens (3-4x week) and occasional insects/fish (1x week)."
+        case .other:
+            return "Research a balanced diet specific to your pet. Generally, fresh and species-appropriate food is best."
+        }
+    }
+
+    var exerciseGuidance: String {
+        switch self {
+        case .dog:
+            return "Needs 30-120 mins daily activity depending on breed. Walks, sniffing, and play are crucial for engagement."
+        case .cat:
+            return "Indoor cats need play to maintain weight. Use wand toys, lasers, or motorized toys to mimic hunting."
+        case .bird:
+            return "Needs physical/mental stimulation. Place food/water apart to encourage moving. Toys and chewables prevent boredom."
+        case .fish:
+            return "Swimming space is their exercise. Ensure tank is large enough with decorations for exploring."
+        case .rabbit:
+            return "Needs huge space to run/binky daily (min 24 sq ft). Tunnels and chew toys prevent boredom."
+        case .hamster:
+            return "Needs daily exercise via a solid-surface wheel (essential) and tunnels/burrowing opportunities."
+        case .turtle:
+            return "Needs ample swimming space and a dry basking area. Live food can stimulate hunting behavior."
+        case .other:
+            return "Ensure enclosure size allows for natural movement and behaviors. Provide enrichment items."
+        }
+    }
 }
