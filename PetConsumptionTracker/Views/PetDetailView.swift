@@ -91,8 +91,6 @@ struct PetDetailView: View {
 
     private var petHeaderView: some View {
         VStack(spacing: 12) {
-    private var petHeaderView: some View {
-        VStack(spacing: 12) {
             PetImageView(pet: pet, size: 120)
                 .onTapGesture {
                     showingGuidanceSheet = true
