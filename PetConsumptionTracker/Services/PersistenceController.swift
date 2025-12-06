@@ -62,7 +62,7 @@ struct PersistenceController {
             try viewContext.save()
         } catch {
             let nsError = error as NSError
-            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+            print("Preview context save error: \(nsError), \(nsError.userInfo)")
         }
         return result
     }()
@@ -75,12 +75,14 @@ struct PersistenceController {
         container = NSPersistentContainer(name: "PetModel", managedObjectModel: model)
 
         if inMemory {
-            container.persistentStoreDescriptions.first!.url = URL(fileURLWithPath: "/dev/null")
+            if let storeDescription = container.persistentStoreDescriptions.first {
+                storeDescription.url = URL(fileURLWithPath: "/dev/null")
+            }
         }
 
         container.loadPersistentStores { (storeDescription, error) in
             if let error = error as NSError? {
-                fatalError("Unresolved error \(error), \(error.userInfo)")
+                print("Persistent store loading error: \(error), \(error.userInfo)")
             }
         }
 
