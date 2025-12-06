@@ -12,8 +12,10 @@ struct EditPetView: View {
     @State private var useCustomImage: Bool
     @State private var foodDurationHours: Double
     @State private var waterDurationHours: Double
+    @State private var exerciseDurationHours: Double
     @State private var foodNotificationsEnabled: Bool
     @State private var waterNotificationsEnabled: Bool
+    @State private var exerciseNotificationsEnabled: Bool
 
     init(pet: PetEntity) {
         self.pet = pet
@@ -22,8 +24,10 @@ struct EditPetView: View {
         _useCustomImage = State(initialValue: !pet.useDefaultImage)
         _foodDurationHours = State(initialValue: Double(pet.foodDurationHours))
         _waterDurationHours = State(initialValue: Double(pet.waterDurationHours))
+        _exerciseDurationHours = State(initialValue: Double(pet.exerciseDurationHours))
         _foodNotificationsEnabled = State(initialValue: pet.foodNotificationEnabled)
         _waterNotificationsEnabled = State(initialValue: pet.waterNotificationEnabled)
+        _exerciseNotificationsEnabled = State(initialValue: pet.exerciseNotificationEnabled)
 
         if let imageData = pet.imageData {
             _selectedImage = State(initialValue: UIImage(data: imageData))
@@ -59,32 +63,105 @@ struct EditPetView: View {
                     }
                 }
 
-                Section("Food Settings") {
+                Section {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
+                            Image(systemName: "fork.knife")
+                                .foregroundColor(.orange)
                             Text("Food lasts:")
                             Spacer()
                             Text(formatDuration(foodDurationHours))
                                 .foregroundColor(.secondary)
                         }
                         Slider(value: $foodDurationHours, in: 1...72, step: 1)
+                            .tint(.orange)
                     }
 
-                    Toggle("Low food alerts", isOn: $foodNotificationsEnabled)
+                    Toggle(isOn: $foodNotificationsEnabled) {
+                        HStack {
+                            Image(systemName: "bell.fill")
+                                .foregroundColor(.orange)
+                            Text("Low food alerts")
+                        }
+                    }
+                } header: {
+                    Label("Food Settings", systemImage: "fork.knife")
                 }
 
-                Section("Water Settings") {
+                Section {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
+                            Image(systemName: "drop.fill")
+                                .foregroundColor(.blue)
                             Text("Water lasts:")
                             Spacer()
                             Text(formatDuration(waterDurationHours))
                                 .foregroundColor(.secondary)
                         }
                         Slider(value: $waterDurationHours, in: 1...48, step: 1)
+                            .tint(.blue)
                     }
 
-                    Toggle("Low water alerts", isOn: $waterNotificationsEnabled)
+                    Toggle(isOn: $waterNotificationsEnabled) {
+                        HStack {
+                            Image(systemName: "bell.fill")
+                                .foregroundColor(.blue)
+                            Text("Low water alerts")
+                        }
+                    }
+                } header: {
+                    Label("Water Settings", systemImage: "drop.fill")
+                }
+
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "figure.run")
+                                .foregroundColor(.green)
+                            Text("Exercise every:")
+                            Spacer()
+                            Text(formatExerciseDuration(Int(exerciseDurationHours)))
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(
+                            value: $exerciseDurationHours,
+                            in: Double(PetEntity.minExerciseIntervalHours)...Double(PetEntity.maxExerciseIntervalHours),
+                            step: selectedSpecies.needsExercise ? 1 : 24
+                        )
+                        .tint(.green)
+
+                        if exerciseDurationHours >= 120 {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.yellow)
+                                Text("Maximum interval: 5 days")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+
+                    Toggle(isOn: $exerciseNotificationsEnabled) {
+                        HStack {
+                            Image(systemName: "bell.fill")
+                                .foregroundColor(.green)
+                            Text("Exercise reminders")
+                        }
+                    }
+
+                    if !selectedSpecies.needsExercise {
+                        HStack {
+                            Image(systemName: "info.circle")
+                                .foregroundColor(.secondary)
+                            Text("\(selectedSpecies.rawValue)s typically don't require regular exercise sessions.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                } header: {
+                    Label("Exercise Settings", systemImage: "figure.run")
+                } footer: {
+                    Text("Pets must exercise at least once every 5 days for optimal health.")
                 }
             }
             .navigationTitle("Edit Pet")
@@ -100,6 +177,7 @@ struct EditPetView: View {
                         saveChanges()
                     }
                     .disabled(name.isEmpty)
+                    .fontWeight(.semibold)
                 }
             }
         }
@@ -118,13 +196,40 @@ struct EditPetView: View {
         return "\(h) hour\(h > 1 ? "s" : "")"
     }
 
+    private func formatExerciseDuration(_ hours: Int) -> String {
+        if hours == 1 {
+            return "1 hour"
+        } else if hours < 24 {
+            return "\(hours) hours"
+        } else if hours == 24 {
+            return "1 day"
+        } else if hours == 48 {
+            return "2 days"
+        } else if hours == 72 {
+            return "3 days"
+        } else if hours == 96 {
+            return "4 days"
+        } else if hours >= 120 {
+            return "5 days (max)"
+        } else {
+            let days = hours / 24
+            let remainingHours = hours % 24
+            if remainingHours == 0 {
+                return "\(days) days"
+            }
+            return "\(days)d \(remainingHours)h"
+        }
+    }
+
     private func saveChanges() {
         pet.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         pet.species = selectedSpecies.rawValue
         pet.foodDurationHours = Int32(foodDurationHours)
         pet.waterDurationHours = Int32(waterDurationHours)
+        pet.exerciseDurationHours = Int32(min(exerciseDurationHours, Double(PetEntity.maxExerciseIntervalHours)))
         pet.foodNotificationEnabled = foodNotificationsEnabled
         pet.waterNotificationEnabled = waterNotificationsEnabled
+        pet.exerciseNotificationEnabled = exerciseNotificationsEnabled
 
         if useCustomImage, let image = selectedImage {
             pet.imageData = image.jpegData(compressionQuality: 0.8)
@@ -142,6 +247,8 @@ struct EditPetView: View {
             NotificationManager.shared.cancelNotifications(for: pet)
             NotificationManager.shared.scheduleFoodLowNotification(for: pet)
             NotificationManager.shared.scheduleWaterLowNotification(for: pet)
+            NotificationManager.shared.scheduleExerciseNotification(for: pet)
+            NotificationManager.shared.scheduleExerciseOverdueNotification(for: pet)
             NotificationManager.shared.scheduleEmptyNotification(for: pet, type: "food", timeRemaining: pet.foodTimeRemaining)
             NotificationManager.shared.scheduleEmptyNotification(for: pet, type: "water", timeRemaining: pet.waterTimeRemaining)
 
@@ -161,10 +268,12 @@ struct EditPetView: View {
     pet.species = "Dog"
     pet.foodDurationHours = 24
     pet.waterDurationHours = 12
+    pet.exerciseDurationHours = 24
     pet.createdAt = Date()
     pet.useDefaultImage = true
     pet.foodNotificationEnabled = true
     pet.waterNotificationEnabled = true
+    pet.exerciseNotificationEnabled = true
 
     return EditPetView(pet: pet)
         .environment(\.managedObjectContext, context)

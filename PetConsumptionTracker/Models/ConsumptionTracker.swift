@@ -32,11 +32,26 @@ class ConsumptionTracker: ObservableObject {
         do {
             let pets = try context.fetch(request)
             for pet in pets {
+                // Food notifications
                 if pet.foodNotificationEnabled && pet.isFoodLow {
                     NotificationManager.shared.scheduleFoodLowNotification(for: pet)
                 }
+
+                // Water notifications
                 if pet.waterNotificationEnabled && pet.isWaterLow {
                     NotificationManager.shared.scheduleWaterLowNotification(for: pet)
+                }
+
+                // Exercise notifications
+                if pet.exerciseNotificationEnabled && pet.isExerciseNeeded {
+                    NotificationManager.shared.scheduleExerciseNotification(for: pet)
+                }
+
+                // Medicine notifications
+                for medicine in pet.activeMedicines {
+                    if medicine.notificationEnabled && medicine.isDue {
+                        NotificationManager.shared.scheduleMedicineNotification(for: medicine)
+                    }
                 }
             }
         } catch {
