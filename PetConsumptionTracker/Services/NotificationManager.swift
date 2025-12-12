@@ -47,7 +47,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         content.categoryIdentifier = "PET_ALERT"
 
         if pet.isFoodLow {
-            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 3600, repeats: true)
             let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
             UNUserNotificationCenter.current().add(request) { error in
                 if let error = error { print("Error scheduling food notification: \(error)") }
@@ -79,7 +79,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         content.categoryIdentifier = "PET_ALERT"
 
         if pet.isWaterLow {
-            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 3600, repeats: true)
             let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
             UNUserNotificationCenter.current().add(request) { error in
                 if let error = error { print("Error scheduling water notification: \(error)") }
@@ -141,7 +141,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         content.sound = .default
         content.categoryIdentifier = "PET_EXERCISE"
 
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: pet.exerciseTimeRemaining, repeats: false)
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 3600, repeats: true)
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error { print("Error scheduling exercise overdue notification: \(error)") }
@@ -167,7 +167,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         content.categoryIdentifier = "PET_MEDICINE"
 
         if medicine.isDue {
-            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 3600, repeats: true)
             let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
             UNUserNotificationCenter.current().add(request) { error in
                 if let error = error { print("Error scheduling medicine notification: \(error)") }
@@ -274,7 +274,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         content.sound = .default
         content.categoryIdentifier = "PET_ALERT"
 
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: timeRemaining, repeats: false)
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 3600, repeats: true)
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 
         UNUserNotificationCenter.current().add(request) { error in
