@@ -298,7 +298,12 @@ struct PetDetailView: View {
                     )
                 } else {
                     ForEach(pet.activeMedicines.prefix(3)) { medicine in
-                        MedicineRowView(medicine: medicine, onAdminister: administerMedicine, onEdit: editMedicine)
+                        MedicineRowView(
+                            medicine: medicine,
+                            onAdminister: administerMedicine,
+                            onEdit: editMedicine,
+                            onDelete: deleteMedicine
+                        )
                     }
 
                     if pet.activeMedicines.count > 3 {
@@ -348,6 +353,10 @@ struct PetDetailView: View {
                 } else {
                     ForEach(pet.upcomingVetVisits.prefix(2)) { visit in
                         vetVisitRow(visit)
+                            .overlay(alignment: .trailing) {
+                                vetVisitRowActions(visit)
+                                    .padding(.trailing, 0)
+                            }
                     }
 
                     Button(action: { showingVetVisitsSheet = true }) {
@@ -420,13 +429,24 @@ struct PetDetailView: View {
                     .foregroundColor(.secondary)
             }
             
-            Button(action: { editVetVisit(visit) }) {
-                Image(systemName: "pencil.circle")
-                    .font(.title3)
-                    .foregroundColor(.teal.opacity(0.6))
-            }
         }
         .padding(.vertical, 4)
+    }
+
+    private func vetVisitRowActions(_ visit: VetVisitEntity) -> some View {
+        Menu {
+            Button(action: { editVetVisit(visit) }) {
+                Label("Edit", systemImage: "pencil")
+            }
+            
+            Button(role: .destructive, action: { deleteVetVisit(visit) }) {
+                Label("Delete", systemImage: "trash")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.title3)
+                .foregroundColor(.teal.opacity(0.6))
+        }
     }
 
     // MARK: - Helper Views
@@ -663,6 +683,31 @@ struct PetDetailView: View {
                 NotificationManager.shared.scheduleMedicineNotification(for: medicine)
             } catch {
                 print("Error saving: \(error)")
+            }
+        }
+        }
+    }
+
+    private func deleteMedicine(_ medicine: MedicineEntity) {
+        withAnimation {
+            NotificationManager.shared.cancelMedicineNotification(for: medicine)
+            viewContext.delete(medicine)
+            do {
+                try viewContext.save()
+            } catch {
+                print("Error deleting medicine: \(error)")
+            }
+        }
+    }
+    
+    private func deleteVetVisit(_ visit: VetVisitEntity) {
+        withAnimation {
+            NotificationManager.shared.cancelVetVisitNotifications(for: visit)
+            viewContext.delete(visit)
+            do {
+                try viewContext.save()
+            } catch {
+                print("Error deleting visit: \(error)")
             }
         }
     }

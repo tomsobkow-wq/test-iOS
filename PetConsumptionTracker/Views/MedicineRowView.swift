@@ -4,6 +4,7 @@ struct MedicineRowView: View {
     @ObservedObject var medicine: MedicineEntity
     var onAdminister: (MedicineEntity) -> Void
     var onEdit: (MedicineEntity) -> Void
+    var onDelete: (MedicineEntity) -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -28,11 +29,20 @@ struct MedicineRowView: View {
                     .foregroundColor(.secondary)
             }
 
-            Button(action: { onEdit(medicine) }) {
-                Image(systemName: "pencil.circle")
+            Menu {
+                Button(action: { onEdit(medicine) }) {
+                    Label("Edit", systemImage: "pencil")
+                }
+                
+                Button(role: .destructive, action: { onDelete(medicine) }) {
+                    Label("Delete", systemImage: "trash")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
                     .font(.title3)
                     .foregroundColor(.purple.opacity(0.6))
             }
+            .padding(.horizontal, 4)
 
             Spacer()
             

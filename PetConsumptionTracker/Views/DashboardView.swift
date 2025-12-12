@@ -69,46 +69,45 @@ struct DashboardView: View {
                     .font(.largeTitle)
                     .fontWeight(.bold)
             }
+            
             Spacer()
             
-            // Kid Mode Toggle
-            Toggle("Kid Mode", isOn: $isKidModeEnabled)
-                .labelsHidden()
-                .tint(.accentColor)
-                .overlay(
-                    HStack(spacing: 4) {
-                        if isKidModeEnabled {
-                            Text("Kid Mode")
-                                .font(.caption2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.accentColor)
-                        }
+            HStack(spacing: 12) {
+                // Kid Mode Toggle
+                VStack(spacing: 2) {
+                    Toggle("Kid Mode", isOn: $isKidModeEnabled)
+                        .labelsHidden()
+                        .tint(.accentColor)
+                    
+                    if isKidModeEnabled {
+                        Text("Kid Mode")
+                            .font(.caption2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.accentColor)
                     }
-                    .offset(y: 20)
-                )
-
-            // Simple app icon or profile placeholder
-            Image(systemName: isKidModeEnabled ? "face.smiling.fill" : "pawprint.circle.fill")
-                .font(.system(size: 48))
-                .foregroundColor(.accentColor)
-                .background(
-                    Circle()
-                        .fill(Color.white)
-                        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
-                )
-        }
-
-        .padding(.top, 8)
-        .overlay(alignment: .topTrailing) {
-            Button(action: { showingOnboarding = true }) {
-                Image(systemName: "info.circle")
-                    .font(.title2)
+                }
+                
+                // Info Button
+                Button(action: { showingOnboarding = true }) {
+                    Image(systemName: "info.circle")
+                        .font(.title2)
+                        .foregroundColor(.accentColor)
+                        .padding(4)
+                        .contentShape(Rectangle())
+                }
+                
+                // App Icon/Profile
+                Image(systemName: isKidModeEnabled ? "face.smiling.fill" : "pawprint.circle.fill")
+                    .font(.system(size: 40)) // Slightly smaller to fit better
                     .foregroundColor(.accentColor)
-                    .padding(8)
-                    .contentShape(Rectangle())
+                    .background(
+                        Circle()
+                            .fill(Color.white)
+                            .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                    )
             }
-            .offset(x: 4, y: 0) // Adjust alignment to align with icons if needed
         }
+        .padding(.top, 8)
     }
     
     private var greeting: String {
