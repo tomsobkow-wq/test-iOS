@@ -434,9 +434,7 @@ struct VetVisitDetailView: View {
                 }
             }
             .sheet(isPresented: $showingEditSheet) {
-                if let pet = visit.pet {
-                    AddVetVisitView(pet: pet, visitToEdit: visit)
-                }
+                AddVetVisitView(pet: visit.pet, visitToEdit: visit)
             }
         }
     }
