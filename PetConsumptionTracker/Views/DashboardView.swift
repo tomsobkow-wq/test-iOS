@@ -11,6 +11,7 @@ struct DashboardView: View {
     private var pets: FetchedResults<PetEntity>
     
     @State private var showingAddPet = false
+    @State private var showingOnboarding = false
     @State private var selectedPet: PetEntity?
     
     // Grid layout for pets
@@ -47,6 +48,9 @@ struct DashboardView: View {
             .navigationDestination(item: $selectedPet) { pet in
                 PetDetailView(pet: pet)
             }
+            .sheet(isPresented: $showingOnboarding) {
+                OnboardingView(showOnboarding: $showingOnboarding, isReview: true)
+            }
         }
     }
     
@@ -75,7 +79,18 @@ struct DashboardView: View {
                         .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
                 )
         }
+        }
         .padding(.top, 8)
+        .overlay(alignment: .topTrailing) {
+            Button(action: { showingOnboarding = true }) {
+                Image(systemName: "info.circle")
+                    .font(.title2)
+                    .foregroundColor(.accentColor)
+                    .padding(8)
+                    .contentShape(Rectangle())
+            }
+            .offset(x: 4, y: 0) // Adjust alignment to align with icons if needed
+        }
     }
     
     private var greeting: String {

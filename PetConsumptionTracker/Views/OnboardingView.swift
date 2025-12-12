@@ -2,6 +2,7 @@ import SwiftUI
 
 struct OnboardingView: View {
     @Binding var showOnboarding: Bool // This binds to hasCompletedOnboarding
+    var isReview: Bool = false
     @State private var currentPage = 0
     
     var body: some View {
@@ -38,7 +39,7 @@ struct OnboardingView: View {
             )
             .tag(3)
             
-            FinalOnboardingPage(showOnboarding: $showOnboarding)
+            FinalOnboardingPage(showOnboarding: $showOnboarding, isReview: isReview)
                 .tag(4)
 
         }
@@ -90,6 +91,7 @@ struct OnboardingPage: View {
 
 struct FinalOnboardingPage: View {
     @Binding var showOnboarding: Bool
+    var isReview: Bool
     
     var body: some View {
         VStack(spacing: 32) {
@@ -106,11 +108,11 @@ struct FinalOnboardingPage: View {
                 )
             
             VStack(spacing: 16) {
-                Text("All Set!")
+                Text(isReview ? "You're all caught up!" : "All Set!")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                 
-                Text("You're ready to start tracking. Let's make sure your pet gets the best care possible.")
+                Text(isReview ? "Use these tips to get the most out of the app." : "You're ready to start tracking. Let's make sure your pet gets the best care possible.")
                     .font(.title3)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -118,10 +120,15 @@ struct FinalOnboardingPage: View {
             }
             
             Button {
-                // Set hasCompletedOnboarding to TRUE to dismiss the sheet permanently
-                showOnboarding = true 
+                if isReview {
+                     // In review mode, showOnboarding handles presentation, so false dismisses
+                     showOnboarding = false
+                } else {
+                    // In first run, hasCompletedOnboarding needs to be true
+                    showOnboarding = true 
+                }
             } label: {
-                Text("Get Started")
+                Text(isReview ? "Done" : "Get Started")
                     .font(.headline)
                     .fontWeight(.bold)
                     .foregroundColor(.white)
