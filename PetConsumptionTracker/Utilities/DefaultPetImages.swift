@@ -34,6 +34,8 @@ struct DefaultPetImage: View {
             return Color.yellow.opacity(0.3)
         case .turtle:
             return Color.green.opacity(0.3)
+        case .reptile:
+            return Color.green.opacity(0.3)
         case .other:
             return Color.purple.opacity(0.3)
         }
@@ -54,6 +56,8 @@ struct DefaultPetImage: View {
         case .hamster:
             return Color.yellow.opacity(0.8)
         case .turtle:
+            return Color.green
+        case .reptile:
             return Color.green
         case .other:
             return Color.purple
