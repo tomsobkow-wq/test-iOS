@@ -39,8 +39,16 @@ struct OnboardingView: View {
             )
             .tag(3)
             
+            OnboardingPage(
+                image: "face.smiling.fill",
+                title: "Kid Friendly",
+                description: "Turn on 'Kid Mode' at the top of the dashboard to simplify the app for your little ones.",
+                color: .green
+            )
+            .tag(4)
+            
             FinalOnboardingPage(showOnboarding: $showOnboarding, isReview: isReview)
-                .tag(4)
+                .tag(5)
 
         }
         .tabViewStyle(.page)

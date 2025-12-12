@@ -10,7 +10,7 @@
 		A1000001 /* PetConsumptionTrackerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000001 /* PetConsumptionTrackerApp.swift */; };
 		A1000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000002 /* ContentView.swift */; };
 		A1000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000003 /* Assets.xcassets */; };
-		A1000004 /* PetModel.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = A2000004 /* PetModel.xcdatamodeld */; };
+
 		A1000005 /* Pet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000005 /* Pet.swift */; };
 		A1000006 /* PersistenceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000006 /* PersistenceController.swift */; };
 		A1000007 /* PetListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000007 /* PetListView.swift */; };
@@ -36,7 +36,7 @@
 		A2000001 /* PetConsumptionTrackerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetConsumptionTrackerApp.swift; sourceTree = "<group>"; };
 		A2000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A2000003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		A2000004 /* PetModel.xcdatamodeld */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodeld; path = PetModel.xcdatamodeld; sourceTree = "<group>"; };
+
 		A2000005 /* Pet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pet.swift; sourceTree = "<group>"; };
 		A2000006 /* PersistenceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceController.swift; sourceTree = "<group>"; };
 		A2000007 /* PetListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetListView.swift; sourceTree = "<group>"; };
@@ -86,7 +86,7 @@
 				A4000005 /* Services */,
 				A4000006 /* Utilities */,
 				A2000003 /* Assets.xcassets */,
-				A2000004 /* PetModel.xcdatamodeld */,
+
 			);
 			path = PetConsumptionTracker;
 			sourceTree = "<group>";
@@ -216,7 +216,7 @@
 			files = (
 				A1000001 /* PetConsumptionTrackerApp.swift in Sources */,
 				A1000002 /* ContentView.swift in Sources */,
-				A1000004 /* PetModel.xcdatamodeld in Sources */,
+
 				A1000005 /* Pet.swift in Sources */,
 				A1000006 /* PersistenceController.swift in Sources */,
 				A1000007 /* PetListView.swift in Sources */,
@@ -444,15 +444,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCVersionGroup section */
-		A2000004 /* PetModel.xcdatamodeld */ = {
-			isa = XCVersionGroup;
-			children = (
-			);
-			currentVersion = "";
-			path = PetModel.xcdatamodeld;
-			sourceTree = "<group>";
-			versionGroupType = wrapper.xcdatamodel;
-		};
+
 /* End XCVersionGroup section */
 	};
 	rootObject = A5000000 /* Project object */;

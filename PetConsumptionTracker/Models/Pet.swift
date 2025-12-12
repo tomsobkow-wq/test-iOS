@@ -325,8 +325,11 @@ enum PetSpecies: String, CaseIterable {
     case bird = "Bird"
     case fish = "Fish"
     case rabbit = "Rabbit"
+    case guineaPig = "Guinea Pig"
     case hamster = "Hamster"
+    case mouse = "Mouse"
     case turtle = "Turtle"
+    case lizard = "Lizard"
     case reptile = "Reptile"
     case other = "Other"
 
@@ -337,8 +340,11 @@ enum PetSpecies: String, CaseIterable {
         case .bird: return "bird_default"
         case .fish: return "fish_default"
         case .rabbit: return "rabbit_default"
+        case .guineaPig: return "guineapig_default"
         case .hamster: return "hamster_default"
+        case .mouse: return "mouse_default"
         case .turtle: return "turtle_default"
+        case .lizard: return "lizard_default"
         case .reptile: return "lizard.fill" // System image as placeholder if no asset
         case .other: return "pet_default"
         }
@@ -351,8 +357,11 @@ enum PetSpecies: String, CaseIterable {
         case .bird: return "bird.fill"
         case .fish: return "fish.fill"
         case .rabbit: return "hare.fill"
+        case .guineaPig: return "pawprint.fill" // No specific SF symbol for guinea pig yet
         case .hamster: return "pawprint.fill"
+        case .mouse: return "pawprint.fill" // No specific SF symbol for mouse yet
         case .turtle: return "tortoise.fill"
+        case .lizard: return "lizard.fill"
         case .reptile: return "lizard.fill"
         case .other: return "pawprint.fill"
         }
@@ -373,8 +382,10 @@ enum PetSpecies: String, CaseIterable {
         case .cat: return 48  // Every 2 days
         case .bird: return 24 // Daily
         case .rabbit: return 24 // Daily
+        case .guineaPig: return 24 // Daily
         case .hamster: return 24 // Daily
-        case .fish, .turtle, .reptile: return 168 // Weekly (7 days) for cleaning
+        case .mouse: return 24 // Daily
+        case .fish, .turtle, .lizard, .reptile: return 168 // Weekly (7 days) for cleaning
         case .other: return 48
         }
     }
@@ -391,10 +402,16 @@ enum PetSpecies: String, CaseIterable {
             return "Maintain clean water with filtration and weekly partial changes (25%). Dechlorinate tap water and monitor pH/temp."
         case .rabbit:
             return "Always provide fresh, clean water in a heavy bowl (preferred) or hanging bottle. Check twice daily."
+        case .guineaPig:
+            return "Provide fresh water daily in a bottle (check for blockages) or heavy ceramic bowl. High thirst drive."
         case .hamster:
             return "Fresh water must be available at all times via a clean bottle. Clean the bottle daily."
+        case .mouse:
+            return "Provide fresh water constantly via a bottle. Mice dehydrate quickly, so check water levels daily."
         case .turtle:
             return "Provide a large pool of clean, dechlorinated water. Needs frequent changes (50% weekly) as they are messy eaters."
+        case .lizard:
+            return "Mist enclosure daily for humidity. Provide a shallow water dish. Some won't drink stangant water (need dripper)."
         case .reptile:
             return "Provide fresh, clean water in a shallow bowl. Some reptiles require daily misting for hydration."
         case .other:
@@ -414,10 +431,16 @@ enum PetSpecies: String, CaseIterable {
             return "Feed small amounts (what they eat in 2-3 mins) 1-2 times daily. Flakes or pellets specific to species. Do not overfeed."
         case .rabbit:
             return "80-90% unlimited Timothy hay is vital. 2 cups fresh greens daily. Limit pellets to ~1/4 cup. Avoid sugary treats."
+        case .guineaPig:
+            return "Unlimited Timothy hay. 1 cup fresh veggies (bell peppers for Vitamin C). 1/8 cup pellets. Vitamin C supplement is crucial."
         case .hamster:
             return "Staple diet of high-quality hamster pellets/blocks. Supplement with small amounts of veggies/fruit a few times a week."
+        case .mouse:
+            return "Lab blocks/pellets as staple (80%). Supplement with seeds, grains, and veggies. Avoid sugary treats."
         case .turtle:
             return "Commercial floating pellets daily. Supplement with leafy greens (3-4x week) and occasional insects/fish (1x week)."
+        case .lizard:
+            return "Insectivores (crickets, dubia roaches) or Omnivores. Dust food with Calcium/D3 powder. Feed gut-loaded insects."
         case .reptile:
             return "Diet varies widely (carnivore/herbivore/omnivore). Research your specific reptile's needs (e.g., crickets, mealworms, leafy greens)."
         case .other:
@@ -437,10 +460,16 @@ enum PetSpecies: String, CaseIterable {
             return "Swimming space is their exercise. Ensure tank is large enough with decorations for exploring."
         case .rabbit:
             return "Needs huge space to run/binky daily (min 24 sq ft). Tunnels and chew toys prevent boredom."
+        case .guineaPig:
+            return "Needs large flat floor space (min 7.5 sq ft). Floor time daily. Tunnels and hideys. Do NOT use exercise wheels."
         case .hamster:
             return "Needs daily exercise via a solid-surface wheel (essential) and tunnels/burrowing opportunities."
+        case .mouse:
+            return "Love to climb and run. Provide ropes, ladders, and a solid wheel. Scatter feeding encourages foraging."
         case .turtle:
             return "Needs ample swimming space and a dry basking area. Live food can stimulate hunting behavior."
+        case .lizard:
+            return "Provide climbing branches or rocks. Hunting live insects provides mental stimulation."
         case .reptile:
             return "Research specific heating, lighting (UVB), and humidity requirements for your reptile."
         case .other:
@@ -457,7 +486,7 @@ enum PetSpecies: String, CaseIterable {
     
     var careType: CareType {
         switch self {
-        case .fish, .turtle, .reptile:
+        case .fish, .turtle, .lizard, .reptile:
             return .habitatMaintenance
         default:
             return .exercise
@@ -470,7 +499,7 @@ enum PetSpecies: String, CaseIterable {
         case .habitatMaintenance:
             switch self {
                 case .fish, .turtle: return "Tank Cleaning"
-                case .hamster, .rabbit, .bird, .reptile: return "Cage Cleaning"
+                case .hamster, .mouse, .guineaPig, .rabbit, .bird, .lizard, .reptile: return "Cage Cleaning"
                 default: return "Habitat Cleaning"
             }
         }

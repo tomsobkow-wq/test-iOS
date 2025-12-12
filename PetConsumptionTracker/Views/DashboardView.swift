@@ -13,6 +13,8 @@ struct DashboardView: View {
     @State private var showingAddPet = false
     @State private var showingOnboarding = false
     @State private var selectedPet: PetEntity?
+    @AppStorage("isKidModeEnabled") private var isKidModeEnabled = false
+
     
     // Grid layout for pets
     private let columns = [
@@ -63,14 +65,30 @@ struct DashboardView: View {
                     .foregroundColor(.secondary)
                     .fontWeight(.medium)
                 
-                Text("Pet Care")
+                Text(isKidModeEnabled ? "My Pets" : "Pet Care")
                     .font(.largeTitle)
                     .fontWeight(.bold)
             }
             Spacer()
             
+            // Kid Mode Toggle
+            Toggle("Kid Mode", isOn: $isKidModeEnabled)
+                .labelsHidden()
+                .tint(.accentColor)
+                .overlay(
+                    HStack(spacing: 4) {
+                        if isKidModeEnabled {
+                            Text("Kid Mode")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.accentColor)
+                        }
+                    }
+                    .offset(y: 20)
+                )
+
             // Simple app icon or profile placeholder
-            Image(systemName: "pawprint.circle.fill")
+            Image(systemName: isKidModeEnabled ? "face.smiling.fill" : "pawprint.circle.fill")
                 .font(.system(size: 48))
                 .foregroundColor(.accentColor)
                 .background(
@@ -79,7 +97,7 @@ struct DashboardView: View {
                         .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
                 )
         }
-        }
+
         .padding(.top, 8)
         .overlay(alignment: .topTrailing) {
             Button(action: { showingOnboarding = true }) {

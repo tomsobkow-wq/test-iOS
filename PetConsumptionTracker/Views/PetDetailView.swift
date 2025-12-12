@@ -15,7 +15,10 @@ struct PetDetailView: View {
     @State private var showingGuidanceSheet = false
     
     @State private var medicineToEdit: MedicineEntity?
+
     @State private var vetVisitToEdit: VetVisitEntity?
+    
+    @AppStorage("isKidModeEnabled") private var isKidModeEnabled = false
 
     var body: some View {
         ScrollView {
@@ -30,16 +33,22 @@ struct PetDetailView: View {
                 exerciseSection
 
                 // Medicine Section
-                medicineSection
-
+                if !isKidModeEnabled {
+                    medicineSection
+                }
+                
                 // Vet Visits Section
-                vetVisitsSection
+                if !isKidModeEnabled {
+                    vetVisitsSection
+                }
 
                 // Quick Actions
                 quickActionsView
 
                 // Settings Info
-                settingsInfoView
+                if !isKidModeEnabled {
+                    settingsInfoView
+                }
             }
             .padding(.vertical)
         }
@@ -51,8 +60,11 @@ struct PetDetailView: View {
                     Button(action: { showingEditSheet = true }) {
                         Label("Edit Pet", systemImage: "pencil")
                     }
-                    Button(role: .destructive, action: { showingDeleteConfirmation = true }) {
-                        Label("Delete Pet", systemImage: "trash")
+                    
+                    if !isKidModeEnabled {
+                        Button(role: .destructive, action: { showingDeleteConfirmation = true }) {
+                            Label("Delete Pet", systemImage: "trash")
+                        }
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -529,22 +541,24 @@ struct PetDetailView: View {
                     logExercise()
                 }
 
-                quickActionButton(
-                    title: "Add Medicine",
-                    icon: "pills",
-                    color: .purple
-                ) {
-                    showingAddMedicineSheet = true
-                    medicineToEdit = nil
-                }
+                if !isKidModeEnabled {
+                    quickActionButton(
+                        title: "Add Medicine",
+                        icon: "pills",
+                        color: .purple
+                    ) {
+                        showingAddMedicineSheet = true
+                        medicineToEdit = nil
+                    }
 
-                quickActionButton(
-                    title: "Schedule Visit",
-                    icon: "calendar.badge.plus",
-                    color: .teal
-                ) {
-                    showingAddVetVisitSheet = true
-                    vetVisitToEdit = nil
+                    quickActionButton(
+                        title: "Schedule Visit",
+                        icon: "calendar.badge.plus",
+                        color: .teal
+                    ) {
+                        showingAddVetVisitSheet = true
+                        vetVisitToEdit = nil
+                    }
                 }
             }
             .padding(.horizontal)
