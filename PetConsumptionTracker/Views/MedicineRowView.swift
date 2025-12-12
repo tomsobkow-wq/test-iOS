@@ -3,6 +3,7 @@ import SwiftUI
 struct MedicineRowView: View {
     @ObservedObject var medicine: MedicineEntity
     var onAdminister: (MedicineEntity) -> Void
+    var onEdit: (MedicineEntity) -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -27,8 +28,14 @@ struct MedicineRowView: View {
                     .foregroundColor(.secondary)
             }
 
-            Spacer()
+            Button(action: { onEdit(medicine) }) {
+                Image(systemName: "pencil.circle")
+                    .font(.title3)
+                    .foregroundColor(.purple.opacity(0.6))
+            }
 
+            Spacer()
+            
             if medicine.isDue {
                 Button(action: { 
                     print("Button tapped for \(medicine.name)")

@@ -13,6 +13,9 @@ struct PetDetailView: View {
     @State private var showingVetVisitsSheet = false
     @State private var showingAddVetVisitSheet = false
     @State private var showingGuidanceSheet = false
+    
+    @State private var medicineToEdit: MedicineEntity?
+    @State private var vetVisitToEdit: VetVisitEntity?
 
     var body: some View {
         ScrollView {
@@ -60,13 +63,13 @@ struct PetDetailView: View {
             EditPetView(pet: pet)
         }
         .sheet(isPresented: $showingAddMedicineSheet) {
-            AddMedicineView(pet: pet)
+            AddMedicineView(pet: pet, medicineToEdit: medicineToEdit)
         }
         .sheet(isPresented: $showingVetVisitsSheet) {
             VetVisitsView(pet: pet)
         }
         .sheet(isPresented: $showingAddVetVisitSheet) {
-            AddVetVisitView(pet: pet)
+            AddVetVisitView(pet: pet, visitToEdit: vetVisitToEdit)
         }
         .confirmationDialog("Delete Pet?", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
@@ -262,7 +265,10 @@ struct PetDetailView: View {
             HStack {
                 sectionHeader(title: "Medicine", icon: "pills.fill", color: .purple)
                 Spacer()
-                Button(action: { showingAddMedicineSheet = true }) {
+                Button(action: { 
+                    medicineToEdit = nil
+                    showingAddMedicineSheet = true 
+                }) {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2)
                         .foregroundColor(.purple)
@@ -280,7 +286,7 @@ struct PetDetailView: View {
                     )
                 } else {
                     ForEach(pet.activeMedicines.prefix(3)) { medicine in
-                        MedicineRowView(medicine: medicine, onAdminister: administerMedicine)
+                        MedicineRowView(medicine: medicine, onAdminister: administerMedicine, onEdit: editMedicine)
                     }
 
                     if pet.activeMedicines.count > 3 {
@@ -308,7 +314,10 @@ struct PetDetailView: View {
             HStack {
                 sectionHeader(title: "Vet Visits", icon: "cross.case.fill", color: .teal)
                 Spacer()
-                Button(action: { showingAddVetVisitSheet = true }) {
+                Button(action: { 
+                    vetVisitToEdit = nil
+                    showingAddVetVisitSheet = true 
+                }) {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2)
                         .foregroundColor(.teal)
@@ -397,6 +406,12 @@ struct PetDetailView: View {
                 Text("In \(visit.daysUntilVisit) days")
                     .font(.caption)
                     .foregroundColor(.secondary)
+            }
+            
+            Button(action: { editVetVisit(visit) }) {
+                Image(systemName: "pencil.circle")
+                    .font(.title3)
+                    .foregroundColor(.teal.opacity(0.6))
             }
         }
         .padding(.vertical, 4)
@@ -520,6 +535,7 @@ struct PetDetailView: View {
                     color: .purple
                 ) {
                     showingAddMedicineSheet = true
+                    medicineToEdit = nil
                 }
 
                 quickActionButton(
@@ -528,6 +544,7 @@ struct PetDetailView: View {
                     color: .teal
                 ) {
                     showingAddVetVisitSheet = true
+                    vetVisitToEdit = nil
                 }
             }
             .padding(.horizontal)
@@ -612,6 +629,16 @@ struct PetDetailView: View {
             pet.logExercise()
             saveAndReschedule()
         }
+    }
+    
+    private func editMedicine(_ medicine: MedicineEntity) {
+        medicineToEdit = medicine
+        showingAddMedicineSheet = true
+    }
+    
+    private func editVetVisit(_ visit: VetVisitEntity) {
+        vetVisitToEdit = visit
+        showingAddVetVisitSheet = true
     }
 
     private func administerMedicine(_ medicine: MedicineEntity) {

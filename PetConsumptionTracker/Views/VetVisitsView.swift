@@ -10,6 +10,7 @@ struct VetVisitsView: View {
     @State private var selectedVisit: VetVisitEntity?
     @State private var showingDeleteConfirmation = false
     @State private var visitToDelete: VetVisitEntity?
+    @State private var visitToEdit: VetVisitEntity?
 
     var body: some View {
         NavigationStack {
@@ -63,6 +64,9 @@ struct VetVisitsView: View {
             }
             .sheet(isPresented: $showingAddVisit) {
                 AddVetVisitView(pet: pet)
+            }
+            .sheet(item: $visitToEdit) { visit in
+                AddVetVisitView(pet: pet, visitToEdit: visit)
             }
             .sheet(item: $selectedVisit) { visit in
                 VetVisitDetailView(visit: visit)
@@ -224,6 +228,10 @@ struct VetVisitsView: View {
                 Button(action: { selectedVisit = visit }) {
                     Label("View Details", systemImage: "eye")
                 }
+                
+                Button(action: { visitToEdit = visit }) {
+                    Label("Edit", systemImage: "pencil")
+                }
 
                 if !visit.isCompleted {
                     Button(action: { markVisitCompleted(visit) }) {
@@ -312,8 +320,9 @@ struct VetVisitsView: View {
 struct VetVisitDetailView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
-
+    
     @ObservedObject var visit: VetVisitEntity
+    @State private var showingEditSheet = false
 
     var body: some View {
         NavigationStack {
@@ -417,6 +426,16 @@ struct VetVisitDetailView: View {
                     Button("Done") {
                         dismiss()
                     }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Edit") {
+                        showingEditSheet = true
+                    }
+                }
+            }
+            .sheet(isPresented: $showingEditSheet) {
+                if let pet = visit.pet {
+                    AddVetVisitView(pet: pet, visitToEdit: visit)
                 }
             }
         }

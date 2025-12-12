@@ -5,6 +5,7 @@ struct AddMedicineView: View {
     @Environment(\.dismiss) private var dismiss
 
     let pet: PetEntity
+    let medicineToEdit: MedicineEntity?
 
     @State private var name = ""
     @State private var dosage = ""
@@ -12,6 +13,31 @@ struct AddMedicineView: View {
     @State private var notes = ""
     @State private var notificationEnabled = true
     @State private var selectedFrequencyType = FrequencyType.daily
+    
+    init(pet: PetEntity, medicineToEdit: MedicineEntity? = nil) {
+        self.pet = pet
+        self.medicineToEdit = medicineToEdit
+        
+        if let medicine = medicineToEdit {
+            _name = State(initialValue: medicine.name)
+            _dosage = State(initialValue: medicine.dosage ?? "")
+            _frequencyHours = State(initialValue: Double(medicine.frequencyHours))
+            _notes = State(initialValue: medicine.notes ?? "")
+            _notificationEnabled = State(initialValue: medicine.notificationEnabled)
+            
+            // Determine frequency type
+            let hours = medicine.frequencyHours
+            if hours == 6 {
+                _selectedFrequencyType = State(initialValue: .hourly)
+            } else if hours == 24 {
+                _selectedFrequencyType = State(initialValue: .daily)
+            } else if hours == 168 {
+                _selectedFrequencyType = State(initialValue: .weekly)
+            } else {
+                _selectedFrequencyType = State(initialValue: .everyXDays)
+            }
+        }
+    }
 
     enum FrequencyType: String, CaseIterable {
         case hourly = "Hourly"
@@ -44,7 +70,7 @@ struct AddMedicineView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Add Medicine")
+                            Text(medicineToEdit != nil ? "Edit Medicine" : "Add Medicine")
                                 .font(.headline)
                             Text("for \(pet.name)")
                                 .font(.subheadline)
@@ -99,7 +125,7 @@ struct AddMedicineView: View {
                     summaryView
                 }
             }
-            .navigationTitle("Add Medicine")
+            .navigationTitle(medicineToEdit != nil ? "Edit Medicine" : "Add Medicine")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -203,17 +229,24 @@ struct AddMedicineView: View {
 
     private func saveMedicine() {
         withAnimation {
-            let medicine = MedicineEntity(context: viewContext)
-            medicine.id = UUID()
+            let medicine: MedicineEntity
+            
+            if let existingMedicine = medicineToEdit {
+                medicine = existingMedicine
+            } else {
+                medicine = MedicineEntity(context: viewContext)
+                medicine.id = UUID()
+                medicine.createdAt = Date()
+                medicine.pet = pet
+                medicine.lastAdministered = Date()
+                medicine.isActive = true
+            }
+
             medicine.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
             medicine.dosage = dosage.isEmpty ? nil : dosage.trimmingCharacters(in: .whitespacesAndNewlines)
             medicine.frequencyHours = Int32(frequencyHours)
-            medicine.lastAdministered = Date()
             medicine.notificationEnabled = notificationEnabled
             medicine.notes = notes.isEmpty ? nil : notes.trimmingCharacters(in: .whitespacesAndNewlines)
-            medicine.createdAt = Date()
-            medicine.isActive = true
-            medicine.pet = pet
 
             do {
                 try viewContext.save()

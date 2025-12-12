@@ -5,6 +5,7 @@ struct AddVetVisitView: View {
     @Environment(\.dismiss) private var dismiss
 
     let pet: PetEntity
+    let visitToEdit: VetVisitEntity?
 
     @State private var visitDate = Date()
     @State private var reason = ""
@@ -12,6 +13,20 @@ struct AddVetVisitView: View {
     @State private var clinicName = ""
     @State private var notes = ""
     @State private var reminderEnabled = true
+    
+    init(pet: PetEntity, visitToEdit: VetVisitEntity? = nil) {
+        self.pet = pet
+        self.visitToEdit = visitToEdit
+        
+        if let visit = visitToEdit {
+            _visitDate = State(initialValue: visit.visitDate)
+            _reason = State(initialValue: visit.reason)
+            _vetName = State(initialValue: visit.vetName ?? "")
+            _clinicName = State(initialValue: visit.clinicName ?? "")
+            _notes = State(initialValue: visit.notes ?? "")
+            _reminderEnabled = State(initialValue: visit.reminderEnabled)
+        }
+    }
 
     // Common visit reasons
     private let commonReasons = [
@@ -43,7 +58,7 @@ struct AddVetVisitView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Schedule Vet Visit")
+                            Text(visitToEdit != nil ? "Edit Vet Visit" : "Schedule Vet Visit")
                                 .font(.headline)
                             Text("for \(pet.name)")
                                 .font(.subheadline)
@@ -72,9 +87,7 @@ struct AddVetVisitView: View {
                             ForEach(commonReasons, id: \.self) { reasonOption in
                                 Button(action: {
                                     selectedReason = reasonOption
-                                    if reasonOption != "Other" {
-                                        reason = reasonOption
-                                    }
+                                    reason = reasonOption
                                 }) {
                                     Text(reasonOption)
                                         .font(.subheadline)
@@ -138,7 +151,7 @@ struct AddVetVisitView: View {
                     visitSummaryView
                 }
             }
-            .navigationTitle("Schedule Visit")
+            .navigationTitle(visitToEdit != nil ? "Edit Visit" : "Schedule Visit")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -147,7 +160,7 @@ struct AddVetVisitView: View {
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Schedule") {
+                    Button("Save") {
                         saveVisit()
                     }
                     .disabled(reason.isEmpty)
@@ -224,17 +237,24 @@ struct AddVetVisitView: View {
 
     private func saveVisit() {
         withAnimation {
-            let visit = VetVisitEntity(context: viewContext)
-            visit.id = UUID()
+            let visit: VetVisitEntity
+            
+            if let existingVisit = visitToEdit {
+                visit = existingVisit
+            } else {
+                visit = VetVisitEntity(context: viewContext)
+                visit.id = UUID()
+                visit.isCompleted = false
+                visit.createdAt = Date()
+                visit.pet = pet
+            }
+
             visit.visitDate = visitDate
             visit.reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
             visit.vetName = vetName.isEmpty ? nil : vetName.trimmingCharacters(in: .whitespacesAndNewlines)
             visit.clinicName = clinicName.isEmpty ? nil : clinicName.trimmingCharacters(in: .whitespacesAndNewlines)
             visit.notes = notes.isEmpty ? nil : notes.trimmingCharacters(in: .whitespacesAndNewlines)
-            visit.isCompleted = false
             visit.reminderEnabled = reminderEnabled
-            visit.createdAt = Date()
-            visit.pet = pet
 
             do {
                 try viewContext.save()
