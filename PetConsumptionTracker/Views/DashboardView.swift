@@ -39,7 +39,7 @@ struct DashboardView: View {
                 .padding()
             }
             .navigationTitle("Pet Tracker")
-            .navigationBarTitleDisplayMode(.hidden)
+            .toolbar(.hidden, for: .navigationBar)
             .background(Color(.systemGroupedBackground))
             .sheet(isPresented: $showingAddPet) {
                 AddPetView()
