@@ -395,6 +395,8 @@ enum PetSpecies: String, CaseIterable {
             return "Fresh water must be available at all times via a clean bottle. Clean the bottle daily."
         case .turtle:
             return "Provide a large pool of clean, dechlorinated water. Needs frequent changes (50% weekly) as they are messy eaters."
+        case .reptile:
+            return "Provide fresh, clean water in a shallow bowl. Some reptiles require daily misting for hydration."
         case .other:
             return "Provide fresh, clean water daily. Research specific needs for your pet's species."
         }
@@ -416,6 +418,8 @@ enum PetSpecies: String, CaseIterable {
             return "Staple diet of high-quality hamster pellets/blocks. Supplement with small amounts of veggies/fruit a few times a week."
         case .turtle:
             return "Commercial floating pellets daily. Supplement with leafy greens (3-4x week) and occasional insects/fish (1x week)."
+        case .reptile:
+            return "Diet varies widely (carnivore/herbivore/omnivore). Research your specific reptile's needs (e.g., crickets, mealworms, leafy greens)."
         case .other:
             return "Research a balanced diet specific to your pet. Generally, fresh and species-appropriate food is best."
         }
