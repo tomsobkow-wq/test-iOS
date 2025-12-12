@@ -116,9 +116,9 @@ struct EditPetView: View {
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Image(systemName: "figure.run")
+                            Image(systemName: selectedSpecies.careIcon)
                                 .foregroundColor(.green)
-                            Text("Exercise every:")
+                            Text("\(selectedSpecies.careLabel) every:")
                             Spacer()
                             Text(formatExerciseDuration(Int(exerciseDurationHours)))
                                 .foregroundColor(.secondary)
@@ -126,15 +126,15 @@ struct EditPetView: View {
                         Slider(
                             value: $exerciseDurationHours,
                             in: Double(PetEntity.minExerciseIntervalHours)...Double(PetEntity.maxExerciseIntervalHours),
-                            step: selectedSpecies.needsExercise ? 1 : 24
+                            step: 24
                         )
                         .tint(.green)
 
-                        if exerciseDurationHours >= 120 {
-                            HStack {
+                        if exerciseDurationHours >= 720 {
+                             HStack {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundColor(.yellow)
-                                Text("Maximum interval: 5 days")
+                                Text("Interval: 30 days")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -145,23 +145,17 @@ struct EditPetView: View {
                         HStack {
                             Image(systemName: "bell.fill")
                                 .foregroundColor(.green)
-                            Text("Exercise reminders")
-                        }
-                    }
-
-                    if !selectedSpecies.needsExercise {
-                        HStack {
-                            Image(systemName: "info.circle")
-                                .foregroundColor(.secondary)
-                            Text("\(selectedSpecies.rawValue)s typically don't require regular exercise sessions.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            Text("\(selectedSpecies.careLabel) reminders")
                         }
                     }
                 } header: {
-                    Label("Exercise Settings", systemImage: "figure.run")
+                    Label("\(selectedSpecies.careLabel) Settings", systemImage: selectedSpecies.careIcon)
                 } footer: {
-                    Text("Pets must exercise at least once every 5 days for optimal health.")
+                    if selectedSpecies.careType == .habitatMaintenance {
+                        Text("Regular cleaning is vital for the health of tank and cage pets.")
+                    } else {
+                        Text("Pets need regular activity for optimal health.")
+                    }
                 }
             }
             .navigationTitle("Edit Pet")
@@ -209,8 +203,8 @@ struct EditPetView: View {
             return "3 days"
         } else if hours == 96 {
             return "4 days"
-        } else if hours >= 120 {
-            return "5 days (max)"
+        } else if hours >= 720 {
+            return "30 days (max)"
         } else {
             let days = hours / 24
             let remainingHours = hours % 24

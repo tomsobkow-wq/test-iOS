@@ -78,8 +78,8 @@ extension PetEntity {
 
     // MARK: - Exercise Properties
 
-    /// Maximum allowed exercise interval is 120 hours (5 days)
-    static let maxExerciseIntervalHours: Int32 = 120
+    /// Maximum allowed exercise/cleaning interval is 720 hours (30 days)
+    static let maxExerciseIntervalHours: Int32 = 720
 
     /// Minimum allowed exercise interval is 1 hour
     static let minExerciseIntervalHours: Int32 = 1
@@ -153,6 +153,10 @@ extension PetEntity {
 
     var pastVetVisits: [VetVisitEntity] {
         return vetVisitsArray.filter { $0.isCompleted || $0.visitDate <= Date() }
+    }
+    
+    var speciesEnum: PetSpecies {
+        PetSpecies(rawValue: species) ?? .other
     }
 }
 
@@ -323,6 +327,7 @@ enum PetSpecies: String, CaseIterable {
     case rabbit = "Rabbit"
     case hamster = "Hamster"
     case turtle = "Turtle"
+    case reptile = "Reptile"
     case other = "Other"
 
     var defaultImageName: String {
@@ -334,6 +339,7 @@ enum PetSpecies: String, CaseIterable {
         case .rabbit: return "rabbit_default"
         case .hamster: return "hamster_default"
         case .turtle: return "turtle_default"
+        case .reptile: return "lizard.fill" // System image as placeholder if no asset
         case .other: return "pet_default"
         }
     }
@@ -347,6 +353,7 @@ enum PetSpecies: String, CaseIterable {
         case .rabbit: return "hare.fill"
         case .hamster: return "pawprint.fill"
         case .turtle: return "tortoise.fill"
+        case .reptile: return "lizard.fill"
         case .other: return "pawprint.fill"
         }
     }
@@ -367,7 +374,7 @@ enum PetSpecies: String, CaseIterable {
         case .bird: return 24 // Daily
         case .rabbit: return 24 // Daily
         case .hamster: return 24 // Daily
-        case .fish, .turtle: return 120 // Not really needed
+        case .fish, .turtle, .reptile: return 168 // Weekly (7 days) for cleaning
         case .other: return 48
         }
     }
@@ -430,8 +437,54 @@ enum PetSpecies: String, CaseIterable {
             return "Needs daily exercise via a solid-surface wheel (essential) and tunnels/burrowing opportunities."
         case .turtle:
             return "Needs ample swimming space and a dry basking area. Live food can stimulate hunting behavior."
+        case .reptile:
+            return "Research specific heating, lighting (UVB), and humidity requirements for your reptile."
         case .other:
             return "Ensure enclosure size allows for natural movement and behaviors. Provide enrichment items."
         }
+    }
+    
+    // MARK: - Care Customization
+    
+    enum CareType {
+        case exercise
+        case habitatMaintenance // Tank/Cage cleaning
+    }
+    
+    var careType: CareType {
+        switch self {
+        case .fish, .turtle, .reptile:
+            return .habitatMaintenance
+        default:
+            return .exercise
+        }
+    }
+    
+    var careLabel: String {
+        switch careType {
+        case .exercise: return "Exercise"
+        case .habitatMaintenance:
+            switch self {
+                case .fish, .turtle: return "Tank Cleaning"
+                case .hamster, .rabbit, .bird, .reptile: return "Cage Cleaning"
+                default: return "Habitat Cleaning"
+            }
+        }
+    }
+    
+    var careIcon: String {
+        switch careType {
+        case .exercise: return "figure.run"
+        case .habitatMaintenance: return "sparkles"
+        }
+    }
+    
+    var careActionLabel: String {
+        switch careType {
+        case .exercise: return "Log Exercise"
+        case .habitatMaintenance: return "Cleaned"
+        }
+    }
+    
     }
 }

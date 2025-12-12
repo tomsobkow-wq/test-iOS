@@ -144,8 +144,12 @@ struct PetDetailView: View {
     // MARK: - Exercise Section
 
     private var exerciseSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionHeader(title: "Exercise", icon: "figure.run", color: .green)
+        let careLabel = pet.speciesEnum.careLabel
+        let careIcon = pet.speciesEnum.careIcon
+        let careColor: Color = pet.speciesEnum.careType == .habitatMaintenance ? .teal : .green
+        
+        return VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(title: careLabel, icon: careIcon, color: careColor)
 
             VStack(spacing: 16) {
                 HStack(spacing: 20) {
@@ -158,16 +162,16 @@ struct PetDetailView: View {
                             .trim(from: 0, to: CGFloat(pet.exerciseRemainingPercentage / 100))
                             .stroke(
                                 pet.isExerciseOverdue ? Color.red :
-                                    (pet.isExerciseNeeded ? Color.yellow : Color.green),
+                                    (pet.isExerciseNeeded ? Color.yellow : careColor),
                                 style: StrokeStyle(lineWidth: 12, lineCap: .round)
                             )
                             .rotationEffect(.degrees(-90))
                             .animation(.easeInOut, value: pet.exerciseRemainingPercentage)
 
                         VStack(spacing: 4) {
-                            Image(systemName: "figure.run")
+                            Image(systemName: careIcon)
                                 .font(.title2)
-                                .foregroundColor(pet.isExerciseOverdue ? .red : .green)
+                                .foregroundColor(pet.isExerciseOverdue ? .red : careColor)
                             if pet.isExerciseOverdue {
                                 Text("Overdue!")
                                     .font(.caption)
@@ -186,7 +190,7 @@ struct PetDetailView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         if let lastExercise = pet.lastExercise {
                             HStack {
-                                Text("Last Exercise:")
+                                Text(pet.speciesEnum.careType == .habitatMaintenance ? "Last Cleaned:" : "Last Exercise:")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                 Spacer()
@@ -195,7 +199,7 @@ struct PetDetailView: View {
                                 .font(.headline)
                                 .foregroundColor(pet.isExerciseOverdue ? .red : .primary)
                         } else {
-                            Text("No exercise logged yet")
+                            Text("No \(careLabel.lowercased()) logged yet")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
@@ -227,7 +231,7 @@ struct PetDetailView: View {
                 Button(action: logExercise) {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
-                        Text("Log Exercise")
+                        Text(pet.speciesEnum.careActionLabel)
                             .fontWeight(.semibold)
                     }
                     .foregroundColor(.white)
@@ -235,7 +239,7 @@ struct PetDetailView: View {
                     .padding(.vertical, 14)
                     .background(
                         LinearGradient(
-                            colors: [.green, .green.opacity(0.8)],
+                            colors: [careColor, careColor.opacity(0.8)],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
@@ -561,7 +565,12 @@ struct PetDetailView: View {
                 Divider().padding(.leading, 50)
                 settingRow(icon: "drop.fill", title: "Water alerts", value: pet.waterNotificationEnabled ? "On" : "Off", color: .blue)
                 Divider().padding(.leading, 50)
-                settingRow(icon: "figure.run", title: "Exercise alerts", value: pet.exerciseNotificationEnabled ? "On" : "Off", color: .green)
+                settingRow(
+                    icon: pet.speciesEnum.careIcon,
+                    title: "\(pet.speciesEnum.careLabel) alerts",
+                    value: pet.exerciseNotificationEnabled ? "On" : "Off",
+                    color: pet.speciesEnum.careType == .habitatMaintenance ? .teal : .green
+                )
             }
             .background(Color(.systemBackground))
             .cornerRadius(12)
