@@ -1,39 +1,39 @@
 import SwiftUI
 
 struct OnboardingView: View {
-    @Binding var showOnboarding: Bool
+    @Binding var showOnboarding: Bool // This binds to hasCompletedOnboarding
     @State private var currentPage = 0
     
     var body: some View {
         TabView(selection: $currentPage) {
             OnboardingPage(
-                image: "pawprint.circle.fill", // Using system images for now, can be replaced with custom assets
-                title: "Welcome to Pet Tracker!",
-                description: "This app helps you keep your animals happy by tracking their food and water.",
+                image: "pawprint.circle.fill",
+                title: "Your Pet's Best Friend",
+                description: "Effortlessly track food, water, and daily care to ensure your pet stays happy and healthy.",
                 color: .accentColor
             )
             .tag(0)
             
             OnboardingPage(
                 image: "drop.fill",
-                title: "Simple Tracking",
-                description: "We track simple things like: Is the water bottle empty? Is the food bowl low?",
+                title: "Track What Matters",
+                description: "Never wonder \"did I feed the dog?\" again. Monitor food bowls and water levels at a simple glance.",
                 color: .blue
             )
             .tag(1)
             
             OnboardingPage(
                 image: "timer",
-                title: "You Are The Expert",
-                description: "To help you, we need your help first! You need to estimate how long it takes for your pet to finish their food or water.",
+                title: "Tailored to Your Pet",
+                description: "You know your pet best. Tell us how long a bowl of food or water usually lasts, and we'll handle the timely reminders.",
                 color: .orange
             )
             .tag(2)
             
             OnboardingPage(
                 image: "lightbulb.fill",
-                title: "How to Estimate",
-                description: "Simple ways to estimate:\n• How many days does a bag of food last?\n• How often do you refill the water bottle?",
+                title: "Smart Estimations",
+                description: "Simply estimate how many days a bag of food lasts or how often you refill the water bowl. You can always fine-tune this later!",
                 color: .yellow
             )
             .tag(3)
@@ -59,14 +59,14 @@ struct OnboardingPage: View {
             Spacer()
             
             Image(systemName: image)
-                .font(.system(size: 80))
-                .foregroundColor(color)
-                .padding()
-                .background(
-                    Circle()
-                        .fill(Color.white)
-                        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
-                )
+            .font(.system(size: 80))
+            .foregroundColor(color)
+            .padding()
+            .background(
+                Circle()
+                    .fill(Color.white)
+                    .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+            )
             
             VStack(spacing: 16) {
                 Text(title)
@@ -75,7 +75,7 @@ struct OnboardingPage: View {
                     .multilineTextAlignment(.center)
                 
                 Text(description)
-                    .font(.body)
+                    .font(.title3) // Slightly larger for better readability
                     .fontWeight(.medium)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -106,11 +106,11 @@ struct FinalOnboardingPage: View {
                 )
             
             VStack(spacing: 16) {
-                Text("Ready?")
+                Text("All Set!")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                 
-                Text("Ready to keep your pet happy? Let's go!")
+                Text("You're ready to start tracking. Let's make sure your pet gets the best care possible.")
                     .font(.title3)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -118,7 +118,8 @@ struct FinalOnboardingPage: View {
             }
             
             Button {
-                showOnboarding = false
+                // Set hasCompletedOnboarding to TRUE to dismiss the sheet permanently
+                showOnboarding = true 
             } label: {
                 Text("Get Started")
                     .font(.headline)
@@ -138,5 +139,5 @@ struct FinalOnboardingPage: View {
 }
 
 #Preview {
-    OnboardingView(showOnboarding: .constant(true))
+    OnboardingView(showOnboarding: .constant(false))
 }
