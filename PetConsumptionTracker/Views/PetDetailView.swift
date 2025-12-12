@@ -351,7 +351,7 @@ struct PetDetailView: View {
                         color: .teal
                     )
                 } else {
-                } else {
+
                     ForEach(pet.upcomingVetVisits.prefix(2)) { visit in
                         vetVisitRow(visit)
                     }
