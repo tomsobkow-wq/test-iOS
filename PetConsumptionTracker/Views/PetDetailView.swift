@@ -685,7 +685,6 @@ struct PetDetailView: View {
                 print("Error saving: \(error)")
             }
         }
-        }
     }
 
     private func deleteMedicine(_ medicine: MedicineEntity) {
