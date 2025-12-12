@@ -29,21 +29,6 @@ struct MedicineRowView: View {
                     .foregroundColor(.secondary)
             }
 
-            Menu {
-                Button(action: { onEdit(medicine) }) {
-                    Label("Edit", systemImage: "pencil")
-                }
-                
-                Button(role: .destructive, action: { onDelete(medicine) }) {
-                    Label("Delete", systemImage: "trash")
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.title3)
-                    .foregroundColor(.purple.opacity(0.6))
-            }
-            .padding(.horizontal, 4)
-
             Spacer()
             
             if medicine.isDue {
@@ -71,6 +56,21 @@ struct MedicineRowView: View {
                         .foregroundColor(.purple)
                 }
             }
+            
+            Menu {
+                Button(action: { onEdit(medicine) }) {
+                    Label("Edit", systemImage: "pencil")
+                }
+                
+                Button(role: .destructive, action: { onDelete(medicine) }) {
+                    Label("Delete", systemImage: "trash")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.title3)
+                    .foregroundColor(.purple.opacity(0.6))
+            }
+            .padding(.horizontal, 4)
         }
         .padding(.vertical, 4)
     }

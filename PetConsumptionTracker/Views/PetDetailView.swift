@@ -351,12 +351,9 @@ struct PetDetailView: View {
                         color: .teal
                     )
                 } else {
+                } else {
                     ForEach(pet.upcomingVetVisits.prefix(2)) { visit in
                         vetVisitRow(visit)
-                            .overlay(alignment: .trailing) {
-                                vetVisitRowActions(visit)
-                                    .padding(.trailing, 0)
-                            }
                     }
 
                     Button(action: { showingVetVisitsSheet = true }) {
@@ -429,6 +426,8 @@ struct PetDetailView: View {
                     .foregroundColor(.secondary)
             }
             
+            // Move actions here to prevent overlap and ensure right alignment
+            vetVisitRowActions(visit)
         }
         .padding(.vertical, 4)
     }
