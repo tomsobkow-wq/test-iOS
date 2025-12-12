@@ -16,6 +16,9 @@ struct EditPetView: View {
     @State private var foodNotificationsEnabled: Bool
     @State private var waterNotificationsEnabled: Bool
     @State private var exerciseNotificationsEnabled: Bool
+    
+    @State private var showingAddMedicineSheet = false
+    @State private var showingAddVetVisitSheet = false
 
     init(pet: PetEntity) {
         self.pet = pet
@@ -157,6 +160,18 @@ struct EditPetView: View {
                         Text("Pets need regular activity for optimal health.")
                     }
                 }
+                
+                Section("Health & Wellness") {
+                    Button(action: { showingAddMedicineSheet = true }) {
+                        Label("Add Medicine", systemImage: "pills.fill")
+                            .foregroundColor(.purple)
+                    }
+                    
+                    Button(action: { showingAddVetVisitSheet = true }) {
+                        Label("Schedule Vet Visit", systemImage: "cross.case.fill")
+                            .foregroundColor(.teal)
+                    }
+                }
             }
             .navigationTitle("Edit Pet")
             .navigationBarTitleDisplayMode(.inline)
@@ -173,6 +188,12 @@ struct EditPetView: View {
                     .disabled(name.isEmpty)
                     .fontWeight(.semibold)
                 }
+            }
+            .sheet(isPresented: $showingAddMedicineSheet) {
+                AddMedicineView(pet: pet)
+            }
+            .sheet(isPresented: $showingAddVetVisitSheet) {
+                AddVetVisitView(pet: pet)
             }
         }
     }
