@@ -10,7 +10,6 @@ public struct ModelProfile: Identifiable, Codable, Sendable, Equatable {
     public enum ChatTemplate: String, Codable, Sendable {
         case chatML
         case openAICompatible
-        case anthropicMessages
     }
 
     public enum ToolCallFormat: String, Codable, Sendable {
@@ -18,8 +17,6 @@ public struct ModelProfile: Identifiable, Codable, Sendable, Equatable {
         case hermesTags
         /// Structured `tool_calls` in an OpenAI-compatible API response.
         case openAIFunctions
-        /// `tool_use` / `tool_result` blocks in the Anthropic Messages API.
-        case anthropicToolUse
     }
 
     public let id: String
@@ -78,28 +75,16 @@ extension ModelProfile {
     )
 
     public static let kimiK3 = ModelProfile(
+        // Same id on OpenRouter and on Phala's own API.
         id: "moonshotai/kimi-k3",
         displayName: "Kimi K3",
         runtime: .remote,
         chatTemplate: .openAICompatible,
         toolCallFormat: .openAIFunctions,
-        contextTokens: 128_000,
-        maxOutputTokens: 4_096,
+        contextTokens: 1_048_576,
+        // Reasoning tokens count towards this limit, so keep it generous.
+        maxOutputTokens: 8_192,
         temperature: 0.6
-    )
-}
-
-extension ModelProfile {
-    /// Bolek's stand-in brain until Kimi K3 is hosted. Same app, different provider.
-    public static let claudeSonnet55 = ModelProfile(
-        id: "claude-sonnet-5-5",
-        displayName: "Claude Sonnet 5.5",
-        runtime: .remote,
-        chatTemplate: .anthropicMessages,
-        toolCallFormat: .anthropicToolUse,
-        contextTokens: 1_000_000,
-        maxOutputTokens: 4_096,
-        temperature: 1.0
     )
 }
 

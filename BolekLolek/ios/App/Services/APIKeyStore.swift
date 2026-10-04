@@ -1,11 +1,11 @@
 import Foundation
 import Security
 
-/// Developer-build storage for the Anthropic key. Launch once with
-/// `ANTHROPIC_API_KEY` set and it moves into the Keychain. A shipped app must
+/// Developer-build storage for the OpenRouter key. Launch once with
+/// `OPENROUTER_API_KEY` set and it moves into the Keychain. A shipped app must
 /// never carry a key: Bolek will call our backend instead.
 enum APIKeyStore {
-    private static let service = "com.boleklolek.anthropic"
+    private static let service = "com.boleklolek.openrouter"
     private static let account = "api-key"
 
     static func current() -> String? {
@@ -39,7 +39,7 @@ enum APIKeyStore {
     }
 
     private static func adoptEnvironmentKey() {
-        guard let key = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"]?
+        guard let key = ProcessInfo.processInfo.environment["OPENROUTER_API_KEY"]?
             .trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty else { return }
         save(key)
     }

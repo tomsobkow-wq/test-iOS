@@ -35,17 +35,17 @@ final class AppModel {
     }
 }
 
-/// Bolek's brain: Claude when a developer key is present, otherwise the typed-command demo.
-/// Kimi K3 replaces `ClaudeProvider` here once it is hosted.
+/// Bolek's brain: Kimi K3 through OpenRouter when a developer key is present, otherwise the
+/// typed-command demo. Moving to our own backend later only changes this provider.
 struct BolekBrain: ModelProvider {
-    private let claude = ClaudeProvider(apiKey: { APIKeyStore.current() })
+    private let kimi = OpenRouterProvider(apiKey: { APIKeyStore.current() })
     private let demo = DemoModelProvider(profile: ModelCatalog.bolek)
 
-    var profile: ModelProfile { APIKeyStore.current() == nil ? demo.profile : claude.profile }
+    var profile: ModelProfile { APIKeyStore.current() == nil ? demo.profile : kimi.profile }
 
     func respond(to request: ModelRequest) async throws -> ModelResponse {
         APIKeyStore.current() == nil
             ? try await demo.respond(to: request)
-            : try await claude.respond(to: request)
+            : try await kimi.respond(to: request)
     }
 }
