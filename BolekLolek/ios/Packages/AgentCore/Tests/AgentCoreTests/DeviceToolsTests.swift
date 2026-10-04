@@ -322,7 +322,7 @@ final class AgentLoopWithDeviceToolsTests: XCTestCase {
         )
         return AgentSession(
             mode: .lolek,
-            provider: DemoModelProvider(profile: .bielikV3_4_5B),
+            provider: DemoModelProvider(profile: .qwen35_4B),
             registry: ToolRegistry(tools),
             approvalHandler: AllowAll(),
             language: .en
@@ -365,7 +365,7 @@ final class AgentLoopWithDeviceToolsTests: XCTestCase {
             services: DeviceServices(weather: services, calendar: services, contacts: services, notifications: services, urlOpener: services, spending: SpendingStore(fileURL: nil)),
             clock: clock
         )
-        let session = AgentSession(mode: .lolek, provider: DemoModelProvider(profile: .bielikV3_4_5B), registry: ToolRegistry(tools), approvalHandler: DenyAll(), language: .en)
+        let session = AgentSession(mode: .lolek, provider: DemoModelProvider(profile: .qwen35_4B), registry: ToolRegistry(tools), approvalHandler: DenyAll(), language: .en)
         _ = try await session.send("text: Anna: hi")
         let opened = await services.recorder.openedURLs
         XCTAssertTrue(opened.isEmpty, "Denied, so Messages must not open")

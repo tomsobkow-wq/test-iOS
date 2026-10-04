@@ -16,7 +16,7 @@ For a new Claude Code session picking up this prototype. Read this, then
 - International app, but must work very well in Poland. Polish + English from
   the ground up. UI follows the phone's language; agent replies in the
   language the user writes in.
-- **Lolek**: designed around Bielik, must be switchable to Qwen3.5-4B (pick by
+- **Lolek**: Qwen3.5-4B (decided after the evals; Bielik was tried and dropped). Originally: designed around Bielik, switchable to Qwen3.5-4B (pick by
   evals). Talks to no server of ours. If the user connects Gmail/IMAP, the
   phone talks to the mail provider directly; that's allowed. One-off price.
 - **Bolek**: Kimi K3 on Phala GPU TEE, hosted in the EU. Subscription.

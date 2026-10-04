@@ -2,35 +2,36 @@
 
 Package: `ios/Packages/LolekRuntime`. Everything below was verified against the real files, not recalled.
 
-## Models
+## Model
 
-| | Qwen3.5 4B (default) | Bielik v3 4.5B Instruct |
+**Qwen3.5 4B**, `unsloth/Qwen3.5-4B-GGUF` · `Qwen3.5-4B-Q4_K_M.gguf`, 2,740,937,888 bytes,
+SHA-256 `00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4` (checked against the downloaded file).
+Architecture `qwen35`, hybrid (cannot rewind its memory). Chat template: ChatML, thinking off by default, tools in the
+system prompt, calls as XML: `<tool_call><function=name><parameter=k>v</parameter></function></tool_call>`, results as
+`<tool_response>` in a user turn.
+
+The placeholder profile assumed Hermes JSON tool calls. **It was wrong.** `Tools/gen_golden.py` renders the chat template
+embedded in the GGUF file with Jinja, and `GoldenPromptTests` require our Swift renderer to match byte for byte (tools,
+tool loops, parallel calls, multi-turn).
+
+### Why not Bielik (evaluated and dropped)
+
+Bielik v3 4.5B Instruct (Q4_K_M from second-state; the official SpeakLeash repo only has fp16 and Q8_0, too big for 8 GB)
+has a plain ChatML template with no tool support. On the same scorecard, with strict scoring (any unrequested tool call fails):
+
+| | Qwen3.5 4B | Bielik v3 4.5B |
 |---|---|---|
-| File | `unsloth/Qwen3.5-4B-GGUF` · `Qwen3.5-4B-Q4_K_M.gguf` | `second-state/Bielik-4.5B-v3.0-Instruct-GGUF` · `…-Q4_K_M.gguf` |
-| Size | 2,740,937,888 B | 2,878,886,912 B |
-| SHA-256 | `00fe7986…ef11a4` | `39fb78db…6763e1` |
-| Architecture | `qwen35`, **hybrid** (cannot rewind its memory) | `llama` (plain attention) |
-| Template | ChatML, thinking off by default, tools in system prompt | plain ChatML with `<s>`, **no tool support** |
-| Tool calls | XML: `<tool_call><function=name><parameter=k>v</parameter></function></tool_call>` | none native; we ask for JSON in `<tool_call>` tags |
+| Tool-calling scorecard (12 PL/EN requests) | **12/12**, every run | 9-10/12, varies between runs |
+| Failure mode | none seen | invents calls for greetings and jokes (`add_calendar_event`, `text_contact`, `set_spending_tracking`); skips `<tool_call>` tags; over-claims abilities; copies prompt timestamps into replies |
 
-Both SHA-256 values were checked against the downloaded files. The official SpeakLeash repo only has fp16 and Q8_0
-(too big for an 8 GB phone); the Q4_K_M above is the second-state build, and gaianet's upload has the same hash.
+Its Polish prose was fluent, but not enough to offset acting on things the user never asked for. The code for it was removed;
+git history before the "remove Bielik" commit has the plain-ChatML renderer if a future comparison needs it.
 
-The placeholder profile assumed Qwen3.5 used Hermes JSON tool calls. **It does not.** `Tools/gen_golden.py` renders the
-chat templates embedded in the GGUF files with Jinja, and `GoldenPromptTests` require our Swift renderer to match
-byte for byte (tools, tool loops, parallel calls, multi-turn).
+## Scorecard (12 PL/EN requests, strict)
 
-## Tool-calling scorecard (12 PL/EN requests, strict: any unrequested tool call fails)
-
-Run: `LOLEK_MODEL_DIR=~/Developer/lolek-models swift test --filter testToolCallingScorecard`
-
-- **Qwen3.5 4B: 12/12** on every run. Picks the right tool, correct arguments, answers in the user's language.
-- **Bielik v3 4.5B: 9–10/12**, varies between runs. Knows which tool, but often skips the `<tool_call>` tags (we accept bare
-  JSON for known tool names) and invents calls for greetings and jokes (`add_calendar_event`, `text_contact`,
-  `set_spending_tracking`). It also over-claims abilities in plain chat and copies prompt timestamps into replies.
-
-`ModelCatalog.lolekDefault` is therefore Qwen3.5 4B. Switching is a one-line change there. Polish prose quality has not
-been scored yet (needs native reviewers, ARCHITECTURE §10).
+Run: `LOLEK_MODEL_DIR=~/Developer/lolek-models swift test --filter testToolCallingScorecard`. Covers weather, alarm, timer,
+reminder, text, call, expense, spending summary, calendar, a greeting and a joke. A lookup first (`find_contact`) is allowed;
+any other unrequested tool call fails the case. Polish prose quality has not been scored (needs native reviewers, ARCHITECTURE §10).
 
 ## Speed: why there are checkpoints
 
@@ -38,7 +39,6 @@ Qwen3.5 is hybrid, so llama.cpp cannot drop just the tail of its memory: with th
 trick it re-read **0 of 707** tokens every step. The engine saves the model's memory state at the end of the fixed header
 (instructions and tools) and at the end of each prompt body, and restores the best match (what llama.cpp's own server does).
 Measured on a Mac: follow-up prefill **2.98 s → 0.15 s**. Each checkpoint is about 74 MB at 680 tokens; at most 3 are kept.
-Bielik does not need this (its prefix reuse works directly).
 
 To keep the cache valid, the system prompt must not change between turns, so the current date is not in it. User messages
 carry a `[Monday 2026-10-05 09:41]` stamp instead, and `ModelRequest.now` carries the clock to remote providers.

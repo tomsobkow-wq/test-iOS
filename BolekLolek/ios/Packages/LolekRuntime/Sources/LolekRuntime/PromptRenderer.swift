@@ -1,17 +1,14 @@
 import AgentCore
 import Foundation
 
-/// How a model wants its conversation laid out. Both families use ChatML framing;
-/// they differ in tool handling. Verified against the chat templates embedded in the
-/// GGUF files (see Tools/gen_golden.py and the golden tests).
+/// How a model wants its conversation laid out, verified against the chat template embedded in
+/// the GGUF file (see Tools/gen_golden.py and the golden tests). One style today; a new model
+/// family adds a case here.
 public enum PromptStyle: String, Sendable {
     /// Qwen3.5: tools in the system prompt as JSON, calls as
     /// `<tool_call><function=name><parameter=k>v</parameter></function></tool_call>`,
     /// results as `<tool_response>` inside a user turn, thinking switched off.
     case qwen35
-    /// Bielik v3: plain ChatML with a leading `<s>` and no tool support in its template.
-    /// Tools are described in the system prompt and called with JSON in `<tool_call>` tags.
-    case plainChatML
 }
 
 public struct PromptRenderer: Sendable {
@@ -33,7 +30,6 @@ public struct PromptRenderer: Sendable {
     public func renderHeader(system: String, tools: [ToolSpec]) -> String {
         switch style {
         case .qwen35: renderQwen(system: system, messages: [], tools: tools)
-        case .plainChatML: Self.plainHeader(system: system, tools: tools)
         }
     }
 
@@ -58,9 +54,6 @@ public struct PromptRenderer: Sendable {
         case .qwen35:
             full = renderQwen(system: system, messages: stamped, tools: tools)
             generation = "<|im_start|>assistant\n<think>\n\n</think>\n\n"
-        case .plainChatML:
-            full = renderPlain(system: system, messages: stamped, tools: tools)
-            generation = "<|im_start|>assistant\n"
         }
         precondition(full.hasPrefix(header), "the header must be a prefix of the full prompt")
         return (header, String(full.dropFirst(header.count)), generation)
@@ -144,56 +137,6 @@ public struct PromptRenderer: Sendable {
                 let previousIsTool = index > 0 && conversation[index - 1].role == .tool
                 if !previousIsTool { out += "<|im_start|>user" }
                 out += "\n<tool_response>\n" + content + "\n</tool_response>"
-                let nextIsTool = index + 1 < conversation.count && conversation[index + 1].role == .tool
-                if !nextIsTool { out += "<|im_end|>\n" }
-            }
-        }
-        return out
-    }
-
-    // MARK: - Bielik (plain ChatML)
-
-    private static func plainHeader(system: String, tools: [ToolSpec]) -> String {
-        var systemText = system
-        if !tools.isEmpty {
-            systemText += "\n\n# Tools\nYou can call these functions when needed:\n<tools>"
-            for tool in tools { systemText += "\n" + Self.toolJSON(tool) }
-            systemText += """
-
-            </tools>
-            To call a function, reply with ONLY:
-            <tool_call>
-            {"name": "function_name", "arguments": {"parameter": "value"}}
-            </tool_call>
-            You may write one short sentence before the call, never after it. \
-            Wait for the <tool_response> before you answer. If no function is needed, just answer normally.
-            """
-        }
-
-        return "<s><|im_start|>system\n" + systemText + "<|im_end|>\n"
-    }
-
-    private func renderPlain(system: String, messages: [ChatMessage], tools: [ToolSpec]) -> String {
-        var out = Self.plainHeader(system: system, tools: tools)
-        let conversation = messages.filter { $0.role != .system }
-        for (index, message) in conversation.enumerated() {
-            switch message.role {
-            case .system:
-                continue
-            case .user:
-                out += "<|im_start|>user\n" + message.text + "<|im_end|>\n"
-            case .assistant:
-                var text = message.text
-                for call in message.toolCalls {
-                    let arguments = JSONValue.parse(call.argumentsJSON)?.pythonDump() ?? "{}"
-                    let json = "{\"name\": " + JSONValue.string(call.name).pythonDump() + ", \"arguments\": " + arguments + "}"
-                    text += (text.isEmpty ? "" : "\n") + "<tool_call>\n" + json + "\n</tool_call>"
-                }
-                out += "<|im_start|>assistant\n" + text + "<|im_end|>\n"
-            case .tool:
-                let previousIsTool = index > 0 && conversation[index - 1].role == .tool
-                if !previousIsTool { out += "<|im_start|>user" }
-                out += "\n<tool_response>\n" + message.text + "\n</tool_response>"
                 let nextIsTool = index + 1 < conversation.count && conversation[index + 1].role == .tool
                 if !nextIsTool { out += "<|im_end|>\n" }
             }

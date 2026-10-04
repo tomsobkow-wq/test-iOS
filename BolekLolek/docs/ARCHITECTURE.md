@@ -17,7 +17,7 @@ from day one, and must work especially well in Poland.
 |---|---|
 | Devices | iPhone 15 Pro and newer only (8 GB RAM). Minimum iOS 18. SwiftUI. |
 | App shape | One app, two buttons: Lolek / Bolek. Separate memories by default. |
-| Lolek model | Designed around **Bielik** (Polish, Apache-2.0), swappable to **Qwen3.5-4B** via config. |
+| Lolek model | **Qwen3.5 4B** (chosen by the tool-calling scorecard; Bielik v3 4.5B was evaluated and dropped, see LOLEK_RUNTIME.md). A new model is a `ModelProfile` + prompt style. |
 | Lolek privacy | Talks to no server of ours. Only network traffic: one-off model download, and — if the user connects it — direct phone ↔ mail-provider traffic (e.g. Gmail). No analytics on content. |
 | Bolek model | **Kimi K3** on Phala GPU TEE (attested). |
 | Bolek hosting | EU only. |
@@ -60,7 +60,7 @@ machine. Building and running still needs a Mac with Xcode.
                          │   memory format, approvals UI)              │
                          │        │                    │               │
                          │  LolekRuntime          BolekClient ─────────┼──► EU backend
-                         │  llama.cpp + Bielik/   (HTTPS, per-user     │    (orchestrator)
+                         │  llama.cpp + Qwen3.5   (HTTPS, per-user     │    (orchestrator)
                          │  Qwen GGUF, on-device  keys)                │        │
                          │        │                                    │        ▼
                          │  On-device tools: notes, reminders,         │   Phala GPU TEE
@@ -80,8 +80,8 @@ and the set of tools that are allowed, not the app.
   Implementations: `LlamaCppProvider` (Lolek), `BolekRemoteProvider` (Bolek runs
   its loop server-side; the phone renders events and approvals).
 - **`ModelProfile`** per model: chat template, tool-call format, stop tokens,
-  context budget, sampling defaults, system prompts (PL and EN). Swapping Bielik
-  ↔ Qwen is a profile change.
+  context budget, sampling defaults, system prompts (PL and EN). Swapping the
+  on-device model is a profile change plus a prompt style.
 - **`Tool` protocol** with metadata: `name`, JSON schema, `tier` (`lolek`,
   `bolek`, `both`), `risk` (`read`, `write`, `send`, `spend`), localized
   descriptions.
@@ -103,17 +103,17 @@ and the set of tools that are allowed, not the app.
 - **Grammar-constrained decoding** (GBNF/JSON schema) for tool calls, so a 4B
   model can't emit malformed calls.
 
-### Models
-| Candidate | Why | Notes |
-|---|---|---|
-| **Bielik v3 4.5B Instruct** (default) | Polish-first tokenizer and training; Apache-2.0 | Initialised from Qwen2.5-3B, so llama.cpp compatible. Tool calling quality must be measured. |
-| **Qwen3.5-4B** (fallback) | Strong tool calling, 201 languages, multimodal | Released Feb 2026. Polish quality at 4B must be measured. |
+### Model
+**Qwen3.5-4B** (`Qwen3.5-4B-Q4_K_M.gguf`, 2.74 GB): strong tool calling, hybrid architecture,
+201 languages. It scored 12/12 on the PL/EN tool-calling scorecard on every run. **Bielik v3 4.5B**
+(Polish-first, Apache-2.0) was evaluated and dropped: 9-10/12 with invented tool calls and
+over-claimed abilities. Details and the swap procedure are in LOLEK_RUNTIME.md.
 
-Both are quantized to about Q4_K_M (~2.5–3 GB). Downloaded once inside the app
+The model is quantized to about Q4_K_M (~2.7 GB), downloaded once inside the app
 from a pinned URL and checked against a SHA-256 hash. No other network call is
 involved.
 
-The choice is made by the eval suite (§10), not by preference.
+The choice was made by the eval suite (§10), not by preference.
 
 ### Lolek tools (v1)
 Kept small on purpose, to about 8 tools, with at most 1–2 planning steps.
@@ -236,7 +236,7 @@ Output: a scorecard per model. Lolek's default model is the winner.
 1. **Skeleton**: XcodeGen project, app shell, Lolek/Bolek switch, String
    Catalogs PL/EN, `AgentCore` protocols.
 2. **Lolek runtime**: llama.cpp integration, model download and verification,
-   streaming chat, `ModelProfile` for Bielik and Qwen.
+   streaming chat, `ModelProfile` for Qwen. **Done**, see LOLEK_RUNTIME.md.
 3. **Lolek tools**: notes, reminders, EventKit, contacts, constrained tool
    calls, approvals UI.
 4. **Evals v1**: PL/EN suite and model scorecard. Pick Lolek's default.
@@ -250,9 +250,8 @@ Output: a scorecard per model. Lolek's default model is the winner.
    app, per-user keys.
 
 ## 12. Open questions and risks
-- Bielik v3 4.5B tool-calling reliability is unknown. This is the biggest risk
-  for Lolek. Mitigations: constrained decoding, Qwen fallback, and a newer
-  Bielik release if one is available.
+- Qwen3.5 4B's tool calling is strong on the 12-case scorecard, but Polish prose quality at 4B is
+  unscored and nothing has been measured on an iPhone yet (speed, heat, memory with a 2.7 GB model).
 - Phala capacity and region in the EU must be confirmed.
 - Gmail restricted-scope verification (CASA) is needed before a public launch.
 - Many Polish services have no public API. Browser automation is fragile and

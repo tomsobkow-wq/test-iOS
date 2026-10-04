@@ -2,7 +2,7 @@ import AgentCore
 import Foundation
 
 /// Turns what a small model wrote into plain text plus structured tool calls.
-/// Understands Qwen3.5's XML calls and the JSON calls we ask Bielik for.
+/// Understands Qwen3.5's XML tool calls.
 public enum ToolCallParser {
     public struct Parsed: Equatable, Sendable {
         public let text: String
@@ -17,8 +17,6 @@ public enum ToolCallParser {
     public static func parse(_ raw: String, tools: [ToolSpec]) -> Parsed {
         let withoutThinking = stripEchoedStamp(stripThinking(raw))
         guard let firstCall = withoutThinking.range(of: "<tool_call>") else {
-            // Models that were not trained on tools (Bielik) often write the JSON without the tags.
-            if let call = bareJSONCall(in: withoutThinking, tools: tools) { return Parsed(text: "", calls: [call]) }
             return Parsed(text: withoutThinking.trimmingCharacters(in: .whitespacesAndNewlines), calls: [])
         }
         let before = String(withoutThinking[..<firstCall.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -83,26 +81,9 @@ public enum ToolCallParser {
         return out
     }
 
-    /// The whole answer is one JSON object `{"name": ..., "arguments": {...}}` naming a tool we offered
-    /// (optionally inside a ``` fence). Random JSON the user asked for is left alone.
-    static func bareJSONCall(in text: String, tools: [ToolSpec]) -> ToolCall? {
-        var body = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if body.hasPrefix("```") {
-            body = body.drop(while: { $0 != "\n" }).dropFirst().description
-            if let fence = body.range(of: "```", options: .backwards) { body = String(body[..<fence.lowerBound]) }
-            body = body.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        guard body.hasPrefix("{"), body.hasSuffix("}"),
-              let call = parseJSON(body), tools.contains(where: { $0.name == call.name })
-        else { return nil }
-        return call
-    }
-
     private static func parseBlock(_ block: String, tools: [ToolSpec]) -> ToolCall? {
-        if let functionStart = block.range(of: "<function=") {
-            return parseXML(block, from: functionStart, tools: tools)
-        }
-        return parseJSON(block)
+        guard let functionStart = block.range(of: "<function=") else { return nil }
+        return parseXML(block, from: functionStart, tools: tools)
     }
 
     private static func parseXML(_ block: String, from functionStart: Range<String.Index>, tools: [ToolSpec]) -> ToolCall? {
@@ -125,15 +106,6 @@ public enum ToolCallParser {
             cursor = valueEnd?.upperBound ?? block.endIndex
         }
         return ToolCall(name: name, argumentsJSON: JSONValue.object(pairs).pythonDump())
-    }
-
-    private static func parseJSON(_ block: String) -> ToolCall? {
-        let trimmed = block.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let object = JSONValue.parse(trimmed), let name = object["name"]?.stringValue else { return nil }
-        var arguments = object["arguments"] ?? object["parameters"] ?? .object([])
-        if case let .string(text) = arguments, let parsed = JSONValue.parse(text) { arguments = parsed }
-        guard case .object = arguments else { return nil }
-        return ToolCall(name: name, argumentsJSON: arguments.pythonDump())
     }
 
     /// XML parameters are all text; the schema says what they really are.

@@ -120,7 +120,8 @@ final class LiveModelTests: XCTestCase {
         Case("Set a timer for 10 minutes", .en, tool: "set_timer") { $0.contains("600") },
         Case("Przypomnij mi jutro o 9 o wizycie u dentysty", .pl, tool: "add_reminder") { $0.lowercased().contains("dentyst") && $0.contains("09:00") },
         Case("Napisz do Anny, że się spóźnię 10 minut", .pl, tool: "text_contact") { $0.contains("Ann") },
-        Case("Call Bob", .en, tool: "call_contact") { $0.lowercased().contains("bob") },
+        // Looking Bob up first and then dialling his number is the right behaviour.
+        Case("Call Bob", .en, tool: "call_contact") { $0.lowercased().contains("bob") || $0.contains("600111222") },
         Case("Wydałem 45 zł w Biedronce", .pl, tool: "log_expense") { $0.contains("45") },
         Case("How much did I spend this week?", .en, tool: "spending_summary") { $0.contains("this_week") },
         Case("What's on my calendar tomorrow?", .en, tool: "list_calendar_events"),

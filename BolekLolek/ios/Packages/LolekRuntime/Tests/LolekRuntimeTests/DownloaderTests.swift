@@ -48,7 +48,7 @@ final class DownloaderTests: XCTestCase {
         StubServer.status = 200
         StubServer.requests = []
         model = LocalModel(
-            id: "test", profile: .bielikV3_4_5B, promptStyle: .plainChatML, fileName: "test.gguf",
+            id: "test", profile: .qwen35_4B, promptStyle: .qwen35, fileName: "test.gguf",
             url: URL(string: "https://models.example/test.gguf")!,
             sizeBytes: Int64(payload.count),
             sha256: SHA256.hash(data: payload).map { String(format: "%02x", $0) }.joined()

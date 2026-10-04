@@ -20,7 +20,6 @@ from jinja2.sandbox import ImmutableSandboxedEnvironment
 FIXTURES = Path(__file__).resolve().parent.parent / "Tests" / "LolekRuntimeTests" / "Fixtures"
 SOURCES = {
     "qwen35": ("unsloth/Qwen3.5-4B-GGUF", "<|im_end|>"),
-    "bielik": ("second-state/Bielik-4.5B-v3.0-Instruct-GGUF", "<|im_end|>"),
 }
 
 
@@ -89,15 +88,6 @@ CASES = {
             {"role": "tool", "content": "Warszawa: 13°C"},
             {"role": "assistant", "content": "It's 13°C in Warszawa."},
             {"role": "user", "content": "Thanks, and a 2 minute timer"},
-        ]),
-    ],
-    "bielik": [
-        ("chat", None, [{"role": "system", "content": SYS}, {"role": "user", "content": "Cześć!"}]),
-        ("multi_turn", None, [
-            {"role": "system", "content": SYS},
-            {"role": "user", "content": "Jaka stolica Polski?"},
-            {"role": "assistant", "content": "Warszawa."},
-            {"role": "user", "content": "A Czech?"},
         ]),
     ],
 }
