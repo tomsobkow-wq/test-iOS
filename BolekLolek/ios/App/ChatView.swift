@@ -9,6 +9,8 @@ struct ChatView: View {
     @Bindable var viewModel: ChatViewModel
     /// Only for Lolek: the one-time model download.
     var setup: LolekSetupModel?
+    var handoff: HandoffCenter?
+    var onAskBolek: ((String) -> Void)?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,12 +19,19 @@ struct ChatView: View {
                     LazyVStack(alignment: .leading, spacing: 6) {
                         if viewModel.visibleMessages.isEmpty {
                             Bubble(text: Text(viewModel.mode.intro), isMine: false, accent: viewModel.mode.accent)
+                            // The airplane-mode invitation only makes sense once Lolek can actually answer.
+                            if let extra = viewModel.mode.introExtra, setup?.isReady ?? true {
+                                Bubble(text: Text(extra), isMine: false, accent: viewModel.mode.accent)
+                            }
                         }
                         if let setup, !setup.isReady {
                             SetupBubble(setup: setup, accent: viewModel.mode.accent)
                         }
                         ForEach(viewModel.visibleMessages) { message in
                             Bubble(text: Text(verbatim: message.text), isMine: message.role == .user, accent: viewModel.mode.accent)
+                        }
+                        if viewModel.mode == .lolek, !viewModel.isWorking, let offer = handoff?.current {
+                            HandoffButton { onAskBolek?(offer.request) }
                         }
                         if let status = viewModel.importStatus {
                             HStack(spacing: 8) {
@@ -232,6 +241,33 @@ struct SetupBubble: View {
             case .ready:
                 EmptyView()
             }
+        }
+        .padding(.bottom, 4)
+    }
+}
+
+/// "Ask Bolek": blue because the request leaves the phone. Says exactly what is sent.
+struct HandoffButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button(action: action) {
+                HStack(spacing: 8) {
+                    Image(systemName: "cloud")
+                    Text("Ask Bolek")
+                }
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 20)
+                .frame(minHeight: 44)
+                .background(AgentMode.bolek.accent, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            Text("Sends only this request to the cloud (EU).")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .padding(.leading, 6)
         }
         .padding(.bottom, 4)
     }

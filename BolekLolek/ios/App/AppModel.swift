@@ -11,6 +11,8 @@ final class AppModel {
     let lolek: ChatViewModel
     let bolek: ChatViewModel
     let lolekSetup = LolekSetupModel()
+    let network = NetworkStatus()
+    let handoff = HandoffCenter()
     private let lolekProvider = LlamaCppProvider()
 
     init() {
@@ -19,7 +21,7 @@ final class AppModel {
         lolek = ChatViewModel(
             mode: .lolek,
             provider: lolekProvider,
-            registry: Self.makeRegistry(),
+            registry: Self.makeRegistry(extra: [OfferHandoffTool(sink: handoff)]),
             documents: DocumentSupport(
                 store: AppServices.documents,
                 summarize: { [lolekProvider] chunks, language in
@@ -27,17 +29,25 @@ final class AppModel {
                 },
                 modelReady: { [setup = lolekSetup] in setup.isReady }
             ),
-            fixedPromptLanguage: .en
+            planner: CompositeTurnPlanner([WebIntentPlanner(), DocumentPlanner(store: AppServices.documents)]),
+            fixedPromptLanguage: .en,
+            willSend: { [handoff] in handoff.clear() }
         )
         bolek = ChatViewModel(
             mode: .bolek,
             provider: BolekBrain(),
-            registry: Self.makeRegistry()
+            registry: Self.makeRegistry(),
+            isOnline: { [network] in network.isOnline }
         )
 
         // Load the model in the background so the first message is not slow, and drop it
         // (about 3 GB) if iOS asks for memory back.
         let host = lolekProvider.engineHost
+        #if DEBUG
+        // Screenshot helpers: BOLEK_START_MODE=bolek, BOLEK_DEMO_HANDOFF=1.
+        if ProcessInfo.processInfo.environment["BOLEK_START_MODE"] == "bolek" { mode = .bolek }
+        if ProcessInfo.processInfo.environment["BOLEK_DEMO_HANDOFF"] == "1" { Task { await handoff.offer(request: "Sprawdź ceny lotów do Lizbony") } }
+        #endif
         lolekSetup.onReady = { [weak lolek] in Task { @MainActor in lolek?.warmUp() } }
         // Under XCTest the tests load their own copy of the model; two would not fit in memory.
         let underTest = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
@@ -54,8 +64,15 @@ final class AppModel {
         }
     }
 
-    private static func makeRegistry() -> ToolRegistry {
-        ToolRegistry([AddNoteTool(store: NoteStore())] + DeviceToolbox.tools(services: AppServices.device) + DocumentToolbox.tools(store: AppServices.documents))
+    /// Called when the user taps "Ask Bolek": switch over and ask just that request. Nothing else from Lolek goes along.
+    func askBolek(_ request: String) {
+        handoff.clear()
+        mode = .bolek
+        bolek.sendText(request)
+    }
+
+    private static func makeRegistry(extra: [any Tool] = []) -> ToolRegistry {
+        ToolRegistry([AddNoteTool(store: NoteStore())] + DeviceToolbox.tools(services: AppServices.device) + DocumentToolbox.tools(store: AppServices.documents) + extra)
     }
 }
 

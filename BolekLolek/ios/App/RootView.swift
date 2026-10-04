@@ -24,6 +24,14 @@ extension AgentMode {
         }
     }
 
+    /// A second opening message, for Lolek only: the invitation to try airplane mode.
+    var introExtra: LocalizedStringKey? {
+        switch self {
+        case .lolek: "Try it: switch on airplane mode and ask me anything. I'm still here."
+        case .bolek: nil
+        }
+    }
+
     var intro: LocalizedStringKey {
         switch self {
         case .lolek: "Hi, I'm Lolek. I run only on this iPhone and never talk to any server. Ask me about the weather, set an alarm, or text a friend."
@@ -37,9 +45,9 @@ struct RootView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ModeHeader(selection: $model.mode)
+            ModeHeader(selection: $model.mode, isOnline: model.network.isOnline)
             Divider()
-            ChatView(viewModel: model.current, setup: model.mode == .lolek ? model.lolekSetup : nil)
+            ChatView(viewModel: model.current, setup: model.mode == .lolek ? model.lolekSetup : nil, handoff: model.handoff, onAskBolek: { model.askBolek($0) })
                 .id(model.mode)
         }
         .tint(model.mode.accent)
@@ -50,6 +58,7 @@ struct RootView: View {
 /// Lolek | Bolek switch, with a line saying who you are talking to.
 struct ModeHeader: View {
     @Binding var selection: AgentMode
+    var isOnline = true
     @Namespace private var thumb
 
     var body: some View {
@@ -81,11 +90,21 @@ struct ModeHeader: View {
             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
 
             HStack(spacing: 6) {
-                Circle().fill(selection.accent).frame(width: 7, height: 7)
-                Text(selection.subtitle)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                if !isOnline, selection == .lolek {
+                    // The moment that proves the promise: no connection, and Lolek is still here.
+                    Image(systemName: "airplane").font(.system(size: 12, weight: .semibold)).foregroundStyle(selection.accent)
+                    Text("Offline · still working").font(.footnote.weight(.medium)).foregroundStyle(selection.accent)
+                } else if !isOnline {
+                    Image(systemName: "wifi.slash").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+                    Text("No internet · Bolek needs a connection").font(.footnote).foregroundStyle(.secondary)
+                } else {
+                    Circle().fill(selection.accent).frame(width: 7, height: 7)
+                    Text(selection.subtitle)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
+            .animation(.easeInOut(duration: 0.25), value: isOnline)
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)

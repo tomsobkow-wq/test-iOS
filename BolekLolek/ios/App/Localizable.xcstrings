@@ -270,6 +270,66 @@
           }
         }
       }
+    },
+    "Offline · still working": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offline · nadal działam"
+          }
+        }
+      }
+    },
+    "No internet · Bolek needs a connection": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak internetu · Bolek potrzebuje połączenia"
+          }
+        }
+      }
+    },
+    "Try it: switch on airplane mode and ask me anything. I'm still here.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spróbuj: włącz tryb samolotowy i zapytaj mnie o cokolwiek. Nadal tu jestem."
+          }
+        }
+      }
+    },
+    "Ask Bolek": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapytaj Bolka"
+          }
+        }
+      }
+    },
+    "Sends only this request to the cloud (EU).": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyśle do chmury (UE) tylko tę prośbę."
+          }
+        }
+      }
+    },
+    "Bolek needs the internet and there is no connection right now. Lolek still works offline.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bolek potrzebuje internetu, a teraz nie ma połączenia. Lolek nadal działa offline."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -92,6 +92,31 @@ final class LiveModelTests: XCTestCase {
         XCTAssertTrue(headerReuse.dropFirst().allSatisfy { $0 > 300 }, "the header must stay cached however many conversations come and go: \(headerReuse)")
     }
 
+    private actor HandoffLog { var requests: [String] = []; func add(_ r: String) { requests.append(r) } }
+    private struct HandoffRecorder: HandoffSink { let log = HandoffLog(); func offer(request: String) async { await log.add(request) } }
+
+    func testHandoffEndToEnd() async throws {
+        let store = try store()
+        let model = LocalModels.qwen35
+        try installed(model, in: store)
+        let provider = LlamaCppProvider(model: model, store: store)
+        let fakes = Fakes()
+        let tools = DeviceToolbox.tools(services: DeviceServices(weather: fakes, calendar: fakes, contacts: fakes, notifications: fakes, urlOpener: fakes, spending: SpendingStore(fileURL: nil)))
+        var lines: [String] = []
+        for (question, language) in [("Sprawdź mi ceny lotów do Lizbony na listopad", ConversationLanguage.pl), ("Find me the cheapest flights from Warsaw to Lisbon", .en), ("Wyszukaj w internecie najlepsze restauracje w Gdańsku", .pl)] {
+            let recorder = HandoffRecorder()
+            let session = AgentSession(mode: .lolek, provider: provider, registry: ToolRegistry(tools + [OfferHandoffTool(sink: recorder)]), approvalHandler: AllowAll(), language: language, planner: WebIntentPlanner(), fixedPromptLanguage: .en)
+            let added = try await session.send(question)
+            let offered = await recorder.log.requests
+            let reply = added.last?.text ?? ""
+            lines.append("  \(question) → offered: \(offered.count == 1) | \(reply.replacingOccurrences(of: "\n", with: " ").prefix(200))")
+            XCTAssertEqual(offered, [question], "the button must carry exactly the user's request")
+            XCTAssertFalse(reply.contains("PLN") || reply.contains("zł") || reply.contains("€"), "no invented prices: \(reply)")
+            XCTAssertTrue(reply.contains("Bolka") || reply.contains("Bolek"), "the sentence names Bolek: \(reply)")
+        }
+        print("\n=== HANDOFF ===\n" + lines.joined(separator: "\n"))
+    }
+
     // MARK: Tool-calling mini evaluation (first slice of build step 4)
 
     private actor Calls {
@@ -160,7 +185,7 @@ final class LiveModelTests: XCTestCase {
             let fakes = Fakes()
             let tools = DeviceToolbox.tools(services: DeviceServices(
                 weather: fakes, calendar: fakes, contacts: fakes, notifications: fakes, urlOpener: fakes, spending: SpendingStore(fileURL: nil)
-            ))
+            )) + [OfferHandoffTool(sink: HandoffRecorder())]
             let provider = LlamaCppProvider(model: model, store: store)
             var passed = 0
             var seconds = 0.0

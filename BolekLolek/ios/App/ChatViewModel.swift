@@ -26,9 +26,17 @@ final class ChatViewModel {
     let documents: DocumentSupport?
 
     private let session: AgentSession
+    private let isOnline: (@MainActor () -> Bool)?
+    private let willSend: (@MainActor () -> Void)?
 
-    init(mode: AgentMode, provider: any ModelProvider, registry: ToolRegistry, documents: DocumentSupport? = nil, fixedPromptLanguage: ConversationLanguage? = nil) {
+    init(
+        mode: AgentMode, provider: any ModelProvider, registry: ToolRegistry, documents: DocumentSupport? = nil,
+        planner: (any TurnPlanner)? = nil, fixedPromptLanguage: ConversationLanguage? = nil,
+        isOnline: (@MainActor () -> Bool)? = nil, willSend: (@MainActor () -> Void)? = nil
+    ) {
         self.documents = documents
+        self.isOnline = isOnline
+        self.willSend = willSend
         let approvals = ApprovalCenter()
         self.mode = mode
         self.approvals = approvals
@@ -39,7 +47,7 @@ final class ChatViewModel {
             approvalHandler: ApprovalCenterHandler(center: approvals),
             // With documents: pick the obvious query tool ourselves and check every figure the model writes.
             verifier: documents.map { _ in GroundingVerifier() },
-            planner: documents.map { DocumentPlanner(store: $0.store) },
+            planner: planner,
             fixedPromptLanguage: fixedPromptLanguage
         )
     }
@@ -71,11 +79,29 @@ final class ChatViewModel {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isWorking else { return }
         draft = ""
+        sendText(text)
+    }
+
+    /// Sends a message as if the user had typed it. Used by the "Ask Bolek" button.
+    func sendText(_ text: String) {
+        guard !isWorking else { return }
         errorText = nil
         isWorking = true
         streamingText = ""
+        willSend?()
         // Shown right away; replaced by the session transcript when the turn ends.
         messages.append(ChatMessage(role: .user, text: text))
+
+        // Bolek lives in the cloud. With no connection, say so kindly instead of failing.
+        if let isOnline, !isOnline() {
+            Task {
+                await session.append(ChatMessage(role: .user, text: text))
+                await session.append(ChatMessage(role: .assistant, text: String(localized: "Bolek needs the internet and there is no connection right now. Lolek still works offline.")))
+                messages = await session.transcript
+                isWorking = false
+            }
+            return
+        }
 
         Task {
             do {
