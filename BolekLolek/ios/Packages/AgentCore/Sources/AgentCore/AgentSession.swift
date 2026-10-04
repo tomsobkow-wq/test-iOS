@@ -1,5 +1,14 @@
 import Foundation
 
+/// Checks an answer before the user sees it. Small models get numbers wrong, so for answers built on tool
+/// results (bank statements) a verifier can ask for one rewrite.
+public protocol AnswerVerifier: Sendable {
+    /// A correction to give the model, or nil when the answer is fine.
+    func review(answer: String, toolNames: [String], toolResults: [String], userText: String, language: ConversationLanguage) -> String?
+    /// Appended to an answer that still fails after the rewrite.
+    func caution(language: ConversationLanguage) -> String
+}
+
 /// The shared agent loop. One session per mode; the mode decides which tools
 /// the model sees and how many steps it may take.
 public actor AgentSession {
@@ -12,14 +21,17 @@ public actor AgentSession {
     private let registry: ToolRegistry
     private let approvalHandler: any ApprovalHandler
     private let policy = ApprovalPolicy()
+    private let verifier: (any AnswerVerifier)?
 
     public init(
         mode: AgentMode,
         provider: any ModelProvider,
         registry: ToolRegistry,
         approvalHandler: any ApprovalHandler,
-        language: ConversationLanguage = .fromLocale()
+        language: ConversationLanguage = .fromLocale(),
+        verifier: (any AnswerVerifier)? = nil
     ) {
+        self.verifier = verifier
         self.mode = mode
         self.provider = provider
         self.registry = registry
@@ -55,7 +67,10 @@ public actor AgentSession {
                 tools: specs,
                 language: language
             )
-            let response = try await provider.respond(to: request, onText: onText ?? { _ in })
+            var response = try await provider.respond(to: request, onText: onText ?? { _ in })
+            if response.toolCalls.isEmpty, let verifier {
+                response = try await verified(response, with: verifier, request: request, turnStart: start, userText: text)
+            }
             transcript.append(ChatMessage(role: .assistant, text: response.text, toolCalls: response.toolCalls, providerState: response.providerState))
             if response.toolCalls.isEmpty {
                 return Array(transcript[start...])
@@ -76,6 +91,28 @@ public actor AgentSession {
             text: SystemPrompt.stepLimitNotice(mode.maxSteps, language: language)
         ))
         return Array(transcript[start...])
+    }
+
+    /// One rewrite at most. The correction is shown to the model but never stored in the conversation.
+    private func verified(
+        _ response: ModelResponse, with verifier: any AnswerVerifier, request: ModelRequest, turnStart: Int, userText: String
+    ) async throws -> ModelResponse {
+        let turn = transcript[turnStart...]
+        let toolNames = turn.flatMap { $0.toolCalls.map(\.name) }
+        let toolResults = turn.filter { $0.role == .tool }.map(\.text)
+        guard !toolResults.isEmpty,
+              let correction = verifier.review(answer: response.text, toolNames: toolNames, toolResults: toolResults, userText: userText, language: language)
+        else { return response }
+
+        var retry = request
+        retry = ModelRequest(
+            mode: request.mode, systemPrompt: request.systemPrompt,
+            messages: request.messages + [ChatMessage(role: .assistant, text: response.text), ChatMessage(role: .user, text: correction)],
+            tools: [], language: request.language, now: request.now, timeZone: request.timeZone
+        )
+        let second = try await provider.respond(to: retry)
+        if verifier.review(answer: second.text, toolNames: toolNames, toolResults: toolResults, userText: userText, language: language) == nil { return second }
+        return ModelResponse(text: second.text + "\n\n" + verifier.caution(language: language), toolCalls: [], providerState: second.providerState)
     }
 
     private func availableTools() async -> [any Tool] {
