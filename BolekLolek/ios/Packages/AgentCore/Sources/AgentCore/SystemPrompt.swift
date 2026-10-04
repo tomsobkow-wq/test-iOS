@@ -13,6 +13,17 @@ enum SystemPrompt {
         case .bolek: base = bolek.text(for: language)
         }
         return base + "\n\n" + clockLine(now: now, timeZone: timeZone, language: language)
+            + "\n" + replyLanguageLine(language)
+    }
+
+    /// The app already detects the language of the user's message. Saying so outright
+    /// is more reliable than leaving it to the model: Kimi answered an English question
+    /// about flights in Polish (3 of 3 runs) until this line was added.
+    static func replyLanguageLine(_ language: ConversationLanguage) -> String {
+        switch language {
+        case .en: "The user is writing in English: reply in English, whatever the topic or place names. Only switch if they clearly switch."
+        case .pl: "Użytkownik pisze po polsku: odpowiadaj po polsku, niezależnie od tematu. Zmień język tylko, jeśli użytkownik wyraźnie go zmieni."
+        }
     }
 
     /// The model cannot know today's date; without this "tomorrow at 6:30" is unusable.
