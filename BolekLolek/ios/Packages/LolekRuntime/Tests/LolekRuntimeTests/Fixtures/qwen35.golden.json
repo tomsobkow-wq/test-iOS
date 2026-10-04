@@ -1,0 +1,308 @@
+[
+ {
+  "name": "plain",
+  "tools": null,
+  "messages": [
+   {
+    "role": "system",
+    "content": "You are Lolek. Be brief."
+   },
+   {
+    "role": "user",
+    "content": "Cześć!"
+   }
+  ],
+  "expected": "<|im_start|>system\nYou are Lolek. Be brief.<|im_end|>\n<|im_start|>user\nCześć!<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+ },
+ {
+  "name": "with_tools",
+  "tools": [
+   {
+    "type": "function",
+    "function": {
+     "name": "get_weather",
+     "description": "Get the current weather.",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "place": {
+        "type": "string"
+       }
+      },
+      "required": []
+     }
+    }
+   },
+   {
+    "type": "function",
+    "function": {
+     "name": "set_timer",
+     "description": "Start a timer.",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "seconds": {
+        "type": "integer"
+       },
+       "label": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "seconds"
+      ]
+     }
+    }
+   }
+  ],
+  "messages": [
+   {
+    "role": "system",
+    "content": "You are Lolek. Be brief."
+   },
+   {
+    "role": "user",
+    "content": "Pogoda w Krakowie?"
+   }
+  ],
+  "expected": "<|im_start|>system\n# Tools\n\nYou have access to the following functions:\n\n<tools>\n{\"type\": \"function\", \"function\": {\"name\": \"get_weather\", \"description\": \"Get the current weather.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"place\": {\"type\": \"string\"}}, \"required\": []}}}\n{\"type\": \"function\", \"function\": {\"name\": \"set_timer\", \"description\": \"Start a timer.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"seconds\": {\"type\": \"integer\"}, \"label\": {\"type\": \"string\"}}, \"required\": [\"seconds\"]}}}\n</tools>\n\nIf you choose to call a function ONLY reply in the following format with NO suffix:\n\n<tool_call>\n<function=example_function_name>\n<parameter=example_parameter_1>\nvalue_1\n</parameter>\n<parameter=example_parameter_2>\nThis is the value for the second parameter\nthat can span\nmultiple lines\n</parameter>\n</function>\n</tool_call>\n\n<IMPORTANT>\nReminder:\n- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags\n- Required parameters MUST be specified\n- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after\n- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls\n</IMPORTANT>\n\nYou are Lolek. Be brief.<|im_end|>\n<|im_start|>user\nPogoda w Krakowie?<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+ },
+ {
+  "name": "tool_loop",
+  "tools": [
+   {
+    "type": "function",
+    "function": {
+     "name": "get_weather",
+     "description": "Get the current weather.",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "place": {
+        "type": "string"
+       }
+      },
+      "required": []
+     }
+    }
+   },
+   {
+    "type": "function",
+    "function": {
+     "name": "set_timer",
+     "description": "Start a timer.",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "seconds": {
+        "type": "integer"
+       },
+       "label": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "seconds"
+      ]
+     }
+    }
+   }
+  ],
+  "messages": [
+   {
+    "role": "system",
+    "content": "You are Lolek. Be brief."
+   },
+   {
+    "role": "user",
+    "content": "Pogoda w Krakowie?"
+   },
+   {
+    "role": "assistant",
+    "content": "",
+    "tool_calls": [
+     {
+      "function": {
+       "name": "get_weather",
+       "arguments": {
+        "place": "Kraków"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "role": "tool",
+    "content": "Kraków: 14°C, pochmurno."
+   }
+  ],
+  "expected": "<|im_start|>system\n# Tools\n\nYou have access to the following functions:\n\n<tools>\n{\"type\": \"function\", \"function\": {\"name\": \"get_weather\", \"description\": \"Get the current weather.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"place\": {\"type\": \"string\"}}, \"required\": []}}}\n{\"type\": \"function\", \"function\": {\"name\": \"set_timer\", \"description\": \"Start a timer.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"seconds\": {\"type\": \"integer\"}, \"label\": {\"type\": \"string\"}}, \"required\": [\"seconds\"]}}}\n</tools>\n\nIf you choose to call a function ONLY reply in the following format with NO suffix:\n\n<tool_call>\n<function=example_function_name>\n<parameter=example_parameter_1>\nvalue_1\n</parameter>\n<parameter=example_parameter_2>\nThis is the value for the second parameter\nthat can span\nmultiple lines\n</parameter>\n</function>\n</tool_call>\n\n<IMPORTANT>\nReminder:\n- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags\n- Required parameters MUST be specified\n- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after\n- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls\n</IMPORTANT>\n\nYou are Lolek. Be brief.<|im_end|>\n<|im_start|>user\nPogoda w Krakowie?<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n<tool_call>\n<function=get_weather>\n<parameter=place>\nKraków\n</parameter>\n</function>\n</tool_call><|im_end|>\n<|im_start|>user\n<tool_response>\nKraków: 14°C, pochmurno.\n</tool_response><|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+ },
+ {
+  "name": "parallel_calls",
+  "tools": [
+   {
+    "type": "function",
+    "function": {
+     "name": "get_weather",
+     "description": "Get the current weather.",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "place": {
+        "type": "string"
+       }
+      },
+      "required": []
+     }
+    }
+   },
+   {
+    "type": "function",
+    "function": {
+     "name": "set_timer",
+     "description": "Start a timer.",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "seconds": {
+        "type": "integer"
+       },
+       "label": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "seconds"
+      ]
+     }
+    }
+   }
+  ],
+  "messages": [
+   {
+    "role": "system",
+    "content": "You are Lolek. Be brief."
+   },
+   {
+    "role": "user",
+    "content": "Pogoda i timer na 5 minut."
+   },
+   {
+    "role": "assistant",
+    "content": "Już robię.",
+    "tool_calls": [
+     {
+      "function": {
+       "name": "get_weather",
+       "arguments": {}
+      }
+     },
+     {
+      "function": {
+       "name": "set_timer",
+       "arguments": {
+        "seconds": 300,
+        "label": "herbata"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "role": "tool",
+    "content": "Warszawa: 13°C"
+   },
+   {
+    "role": "tool",
+    "content": "Timer set."
+   }
+  ],
+  "expected": "<|im_start|>system\n# Tools\n\nYou have access to the following functions:\n\n<tools>\n{\"type\": \"function\", \"function\": {\"name\": \"get_weather\", \"description\": \"Get the current weather.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"place\": {\"type\": \"string\"}}, \"required\": []}}}\n{\"type\": \"function\", \"function\": {\"name\": \"set_timer\", \"description\": \"Start a timer.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"seconds\": {\"type\": \"integer\"}, \"label\": {\"type\": \"string\"}}, \"required\": [\"seconds\"]}}}\n</tools>\n\nIf you choose to call a function ONLY reply in the following format with NO suffix:\n\n<tool_call>\n<function=example_function_name>\n<parameter=example_parameter_1>\nvalue_1\n</parameter>\n<parameter=example_parameter_2>\nThis is the value for the second parameter\nthat can span\nmultiple lines\n</parameter>\n</function>\n</tool_call>\n\n<IMPORTANT>\nReminder:\n- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags\n- Required parameters MUST be specified\n- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after\n- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls\n</IMPORTANT>\n\nYou are Lolek. Be brief.<|im_end|>\n<|im_start|>user\nPogoda i timer na 5 minut.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\nJuż robię.\n\n<tool_call>\n<function=get_weather>\n</function>\n</tool_call>\n<tool_call>\n<function=set_timer>\n<parameter=seconds>\n300\n</parameter>\n<parameter=label>\nherbata\n</parameter>\n</function>\n</tool_call><|im_end|>\n<|im_start|>user\n<tool_response>\nWarszawa: 13°C\n</tool_response>\n<tool_response>\nTimer set.\n</tool_response><|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+ },
+ {
+  "name": "multi_turn",
+  "tools": [
+   {
+    "type": "function",
+    "function": {
+     "name": "get_weather",
+     "description": "Get the current weather.",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "place": {
+        "type": "string"
+       }
+      },
+      "required": []
+     }
+    }
+   },
+   {
+    "type": "function",
+    "function": {
+     "name": "set_timer",
+     "description": "Start a timer.",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "seconds": {
+        "type": "integer"
+       },
+       "label": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "seconds"
+      ]
+     }
+    }
+   }
+  ],
+  "messages": [
+   {
+    "role": "system",
+    "content": "You are Lolek. Be brief."
+   },
+   {
+    "role": "user",
+    "content": "Hi"
+   },
+   {
+    "role": "assistant",
+    "content": "Hello! How can I help?"
+   },
+   {
+    "role": "user",
+    "content": "Weather?"
+   },
+   {
+    "role": "assistant",
+    "content": "",
+    "tool_calls": [
+     {
+      "function": {
+       "name": "get_weather",
+       "arguments": {}
+      }
+     }
+    ]
+   },
+   {
+    "role": "tool",
+    "content": "Warszawa: 13°C"
+   },
+   {
+    "role": "assistant",
+    "content": "It's 13°C in Warszawa."
+   },
+   {
+    "role": "user",
+    "content": "Thanks, and a 2 minute timer"
+   }
+  ],
+  "expected": "<|im_start|>system\n# Tools\n\nYou have access to the following functions:\n\n<tools>\n{\"type\": \"function\", \"function\": {\"name\": \"get_weather\", \"description\": \"Get the current weather.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"place\": {\"type\": \"string\"}}, \"required\": []}}}\n{\"type\": \"function\", \"function\": {\"name\": \"set_timer\", \"description\": \"Start a timer.\", \"parameters\": {\"type\": \"object\", \"properties\": {\"seconds\": {\"type\": \"integer\"}, \"label\": {\"type\": \"string\"}}, \"required\": [\"seconds\"]}}}\n</tools>\n\nIf you choose to call a function ONLY reply in the following format with NO suffix:\n\n<tool_call>\n<function=example_function_name>\n<parameter=example_parameter_1>\nvalue_1\n</parameter>\n<parameter=example_parameter_2>\nThis is the value for the second parameter\nthat can span\nmultiple lines\n</parameter>\n</function>\n</tool_call>\n\n<IMPORTANT>\nReminder:\n- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags\n- Required parameters MUST be specified\n- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after\n- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls\n</IMPORTANT>\n\nYou are Lolek. Be brief.<|im_end|>\n<|im_start|>user\nHi<|im_end|>\n<|im_start|>assistant\nHello! How can I help?<|im_end|>\n<|im_start|>user\nWeather?<|im_end|>\n<|im_start|>assistant\n<tool_call>\n<function=get_weather>\n</function>\n</tool_call><|im_end|>\n<|im_start|>user\n<tool_response>\nWarszawa: 13°C\n</tool_response><|im_end|>\n<|im_start|>assistant\nIt's 13°C in Warszawa.<|im_end|>\n<|im_start|>user\nThanks, and a 2 minute timer<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+ }
+]

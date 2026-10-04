@@ -59,6 +59,12 @@ public struct ToolSpec: Codable, Sendable, Equatable {
     public let description: String
     /// JSON Schema for the arguments object.
     public let parametersSchema: String
+
+    public init(name: String, description: String, parametersSchema: String) {
+        self.name = name
+        self.description = description
+        self.parametersSchema = parametersSchema
+    }
 }
 
 public protocol Tool: Sendable {

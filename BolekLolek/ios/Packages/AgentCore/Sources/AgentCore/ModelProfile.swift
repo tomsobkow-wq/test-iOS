@@ -13,8 +13,12 @@ public struct ModelProfile: Identifiable, Codable, Sendable, Equatable {
     }
 
     public enum ToolCallFormat: String, Codable, Sendable {
-        /// `<tool_call>{"name": ..., "arguments": {...}}</tool_call>` in the text.
-        case hermesTags
+        /// `<tool_call>{"name": ..., "arguments": {...}}</tool_call>` in the text. Used for
+        /// Bielik, whose template has no tool support, so we ask for this format ourselves.
+        case hermesJSON
+        /// `<tool_call><function=name><parameter=k>v</parameter></function></tool_call>`.
+        /// Qwen3.5's native format, read from its GGUF chat template.
+        case qwenXML
         /// Structured `tool_calls` in an OpenAI-compatible API response.
         case openAIFunctions
     }
@@ -50,14 +54,14 @@ public struct ModelProfile: Identifiable, Codable, Sendable, Equatable {
 }
 
 extension ModelProfile {
-    // Template and tool-call format for the on-device models are verified
-    // against the GGUF metadata in build step 2.
+    // Templates and tool-call formats are verified against the chat templates embedded in
+    // the GGUF files; LolekRuntime's golden tests render them with Jinja and compare.
     public static let bielikV3_4_5B = ModelProfile(
         id: "bielik-v3-4.5b-instruct",
         displayName: "Bielik v3 4.5B",
         runtime: .onDevice,
         chatTemplate: .chatML,
-        toolCallFormat: .hermesTags,
+        toolCallFormat: .hermesJSON,
         contextTokens: 8_192,
         maxOutputTokens: 512,
         temperature: 0.3
@@ -68,7 +72,7 @@ extension ModelProfile {
         displayName: "Qwen3.5 4B",
         runtime: .onDevice,
         chatTemplate: .chatML,
-        toolCallFormat: .hermesTags,
+        toolCallFormat: .qwenXML,
         contextTokens: 8_192,
         maxOutputTokens: 512,
         temperature: 0.3
