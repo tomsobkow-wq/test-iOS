@@ -53,7 +53,7 @@ final class SummarizerTests: XCTestCase {
     func testMapReduceCallsAndProgress() async throws {
         let calls = Calls()
         let progress = Calls()
-        let summarizer = DocumentSummarizer(maxParts: 12) { system, user, _ in
+        let summarizer = DocumentSummarizer(strategy: .mapReduce, maxParts: 12) { system, user, _ in
             await calls.add(system, user)
             if system.contains("one part") { return "Fragment \(user.prefix(30)). Czynsz 2400,00 zł." }
             if system.contains("Merge") { return "Scalona notatka. Czynsz 2400,00 zł." }
@@ -73,7 +73,7 @@ final class SummarizerTests: XCTestCase {
 
     func testShortDocumentIsOneCallPlusFinal() async throws {
         let calls = Calls()
-        let summarizer = DocumentSummarizer { system, user, _ in
+        let summarizer = DocumentSummarizer(strategy: .mapReduce) { system, user, _ in
             await calls.add(system, user)
             return system.contains("one part") ? "Notatka o czynszu 2400,00 zł." : "To jest umowa. Czynsz 2400,00 zł."
         }
@@ -84,9 +84,67 @@ final class SummarizerTests: XCTestCase {
     }
 
     func testBoilerplateOnlyDocument() async throws {
-        let summarizer = DocumentSummarizer { _, _, _ in "nothing important" }
+        let summarizer = DocumentSummarizer(strategy: .mapReduce) { _, _, _ in "nothing important" }
         let summary = try await summarizer.summarize(chunks: chunks(3), language: .en)
         XCTAssertTrue(summary.contains("nothing important to summarise"))
+    }
+}
+
+final class ExtractiveSummaryTests: XCTestCase {
+    private let contract = """
+    UMOWA NAJMU LOKALU MIESZKALNEGO zawarta w Krakowie pomiędzy Janem Kowalskim, zwanym Wynajmującym, a Anną Nowak, zwaną Najemcą.
+
+    Przedmiotem najmu jest lokal mieszkalny składający się z dwóch pokoi, kuchni i łazienki, wyposażony w meble.
+
+    Najemca zobowiązuje się płacić czynsz w wysokości 2400,00 zł miesięcznie, płatny do 10 dnia każdego miesiąca.
+
+    Najemca wpłaca kaucję w wysokości 4800,00 zł, zwracaną w ciągu 30 dni od końca umowy.
+
+    Strony zgodnie oświadczają, że lokal jest czysty i schludny oraz znajduje się w dobrym stanie ogólnym.
+
+    Umowa zostaje zawarta na czas określony do 28 lutego 2027 roku, z trzymiesięcznym okresem wypowiedzenia.
+    """
+
+    func testBriefKeepsTheFactSentencesAndTheOpening() {
+        let brief = ExtractiveBrief.build(from: Chunker.chunk(contract))
+        for fact in ["2400,00 zł", "4800,00 zł", "28 lutego 2027", "trzymiesięcznym", "UMOWA NAJMU"] { XCTAssertTrue(brief.contains(fact), "missing \(fact):\n\(brief)") }
+        XCTAssertFalse(brief.contains("czysty i schludny"), "filler sentences are left out when there is a budget")
+    }
+
+    func testBriefRespectsTheBudgetAndKeepsDocumentOrder() {
+        let long = (1...200).map { "Postanowienie numer \($0) przewiduje płatność w wysokości \($0 * 10),00 zł w terminie \($0) dni." }.joined(separator: " ")
+        let brief = ExtractiveBrief.build(from: Chunker.chunk(long), budgetCharacters: 1_200)
+        XCTAssertLessThanOrEqual(brief.count, 1_800)
+        let numbers = brief.components(separatedBy: "numer ").dropFirst().compactMap { Int($0.prefix { $0.isNumber }) }
+        XCTAssertEqual(numbers, numbers.sorted())
+    }
+
+    func testExtractiveSummaryIsOneModelCallOverTheBrief() async throws {
+        let calls = Calls()
+        let summarizer = DocumentSummarizer { system, user, _ in
+            await calls.add(system, user)
+            return "To umowa najmu.\n- Czynsz 2400,00 zł miesięcznie.\n- Kara 9999,00 zł."
+        }
+        let summary = try await summarizer.summarize(chunks: Chunker.chunk(contract), language: .pl)
+        let log = await calls.items
+        XCTAssertEqual(log.count, 1)
+        XCTAssertTrue(log[0].user.contains("4800,00 zł"), "the model is shown the extracted facts")
+        XCTAssertTrue(summary.contains("2400,00"))
+        XCTAssertFalse(summary.contains("9999"), "an invented amount is dropped")
+    }
+
+    func testEmptyModelAnswerFallsBackToTheExtracts() async throws {
+        let summarizer = DocumentSummarizer { _, _, _ in "" }
+        let summary = try await summarizer.summarize(chunks: Chunker.chunk(contract), language: .pl)
+        XCTAssertTrue(summary.contains("2400,00 zł"), "never return nothing")
+    }
+}
+
+final class InvoiceBriefTests: XCTestCase {
+    func testShortFigureLinesSurvive() {
+        let invoice = "INVOICE No. 2026/03/114\n\nSeller: Brightside Studio Ltd, 14 Mill Lane, Leeds.\n\nSubtotal: £3,300.00\nVAT at 20%: £660.00\nTotal due: £3,960.00\n\nPayment is due by 11 April 2026."
+        let brief = ExtractiveBrief.build(from: Chunker.chunk(invoice))
+        for fact in ["£3,300.00", "£660.00", "£3,960.00", "11 April 2026"] { XCTAssertTrue(brief.contains(fact), "missing \(fact):\n\(brief)") }
     }
 }
 
@@ -119,7 +177,23 @@ final class NarratorTests: XCTestCase {
         XCTAssertTrue(result.usedFallback)
         XCTAssertTrue(result.text.contains("Wydatki: 4745.93 PLN"), result.text)
         XCTAssertTrue(result.text.contains("mieszkanie 2400.00 PLN"), result.text)
+        XCTAssertTrue(result.text.contains("17 transakcji"), result.text)
         XCTAssertEqual(NumberGrounding.ungrounded(answer: result.text, sources: [StatementAnalyzer.digest(try statement())]), [], "the fallback itself must be grounded")
+    }
+}
+
+final class StatementSummaryTextTests: XCTestCase {
+    func testPolishPluralsAndFacts() throws {
+        let statement = try XCTUnwrap(StatementParser.parse(Fixtures.mbankCSV()))
+        let text = StatementSummaryText.make(statement, language: .pl)
+        XCTAssertTrue(text.contains("17 transakcji"))
+        XCTAssertTrue(text.contains("Saldo początkowe 5000.00 PLN, końcowe 8799.07 PLN"), text)
+        XCTAssertTrue(text.contains("opłaty bankowe 35.00 PLN"), text)
+        XCTAssertTrue(text.contains("Netflix 52.99 PLN"), text)
+        XCTAssertEqual(NumberGrounding.ungrounded(answer: text, sources: [StatementAnalyzer.digest(statement)]), [], "every number comes from the data")
+        let english = StatementSummaryText.make(try XCTUnwrap(StatementParser.parse(Fixtures.revolutCSV())), language: .en)
+        XCTAssertTrue(english.contains("Money in: 2169.99 GBP"), english)
+        XCTAssertFalse(english.contains("transakcji"))
     }
 }
 

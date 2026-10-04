@@ -24,12 +24,13 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../AgentCore"),
+        .package(path: "../DocumentKit"),
     ],
     targets: [
         llamaTarget,
         .target(
             name: "LolekRuntime",
-            dependencies: [.product(name: "AgentCore", package: "AgentCore"), "llama"]
+            dependencies: [.product(name: "AgentCore", package: "AgentCore"), .product(name: "DocumentKit", package: "DocumentKit"), "llama"]
         ),
         .testTarget(
             name: "LolekRuntimeTests",

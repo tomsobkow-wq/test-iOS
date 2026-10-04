@@ -3,7 +3,7 @@ import Foundation
 /// Turns "PLATNOSC KARTA 02.03 BIEDRONKA 1234 WARSZAWA PL" into "Biedronka" and files it under a category.
 public enum Merchants {
     public static let categories = [
-        "groceries", "eating_out", "transport", "shopping", "health", "subscriptions", "utilities", "housing",
+        "groceries", "eating_out", "transport", "fuel", "shopping", "health", "subscriptions", "utilities", "housing",
         "taxes_insurance", "travel", "cash", "fees", "interest", "loans", "savings", "transfers", "income", "refund", "other",
     ]
 
@@ -32,9 +32,9 @@ public enum Merchants {
         Known(needles: ["subway"], name: "Subway", category: "eating_out"), Known(needles: ["restauracja", "restaurant", "kawiarnia", "cafe ", "bistro", "pizzeria"], name: "Restaurant or café", category: "eating_out"),
         // transport
         Known(needles: ["uber"], name: "Uber", category: "transport"), Known(needles: ["bolt"], name: "Bolt", category: "transport"),
-        Known(needles: ["freenow", "free now"], name: "FreeNow", category: "transport"), Known(needles: ["orlen"], name: "Orlen", category: "transport"),
-        Known(needles: ["shell"], name: "Shell", category: "transport"), Known(needles: ["circle k"], name: "Circle K", category: "transport"),
-        Known(needles: ["moya"], name: "Moya", category: "transport"), Known(needles: ["lotos"], name: "Lotos", category: "transport"),
+        Known(needles: ["freenow", "free now"], name: "FreeNow", category: "transport"), Known(needles: ["orlen"], name: "Orlen", category: "fuel"),
+        Known(needles: ["shell"], name: "Shell", category: "fuel"), Known(needles: ["circle k"], name: "Circle K", category: "fuel"),
+        Known(needles: ["moya"], name: "Moya", category: "fuel"), Known(needles: ["lotos"], name: "Lotos", category: "fuel"),
         Known(needles: ["jakdojade"], name: "Jakdojade", category: "transport"), Known(needles: ["ztm", "mpk ", "zarzad transportu"], name: "Public transport", category: "transport"),
         Known(needles: ["koleo"], name: "Koleo", category: "transport"), Known(needles: ["pkp", "intercity"], name: "PKP", category: "transport"),
         Known(needles: ["flixbus"], name: "FlixBus", category: "transport"), Known(needles: ["parking"], name: "Parking", category: "transport"),

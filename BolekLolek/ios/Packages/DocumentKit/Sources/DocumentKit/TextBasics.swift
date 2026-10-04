@@ -17,13 +17,13 @@ public enum TextDecoding {
 
 extension String {
     /// Lowercased with Polish and other diacritics removed: "Płatność" -> "platnosc".
-    var folded: String {
+    public var folded: String {
         // ł and Ł do not decompose, so handle them first.
         replacingOccurrences(of: "ł", with: "l").replacingOccurrences(of: "Ł", with: "L")
             .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
     }
 
-    var collapsedWhitespace: String {
+    public var collapsedWhitespace: String {
         split(whereSeparator: { $0.isWhitespace || $0 == "\u{00A0}" }).joined(separator: " ")
     }
 }

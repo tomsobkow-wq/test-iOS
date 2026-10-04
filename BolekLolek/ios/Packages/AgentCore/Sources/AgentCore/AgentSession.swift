@@ -9,6 +9,13 @@ public protocol AnswerVerifier: Sendable {
     func caution(language: ConversationLanguage) -> String
 }
 
+/// Decides, before the model is asked anything, which tools obviously answer the user's message. A 4B model
+/// is unreliable at choosing and calling tools for questions about the user's data; code is not.
+public protocol TurnPlanner: Sendable {
+    /// Tool calls to run first, or an empty array to leave everything to the model.
+    func plan(userText: String, language: ConversationLanguage) async -> [ToolCall]
+}
+
 /// The shared agent loop. One session per mode; the mode decides which tools
 /// the model sees and how many steps it may take.
 public actor AgentSession {
@@ -22,6 +29,7 @@ public actor AgentSession {
     private let approvalHandler: any ApprovalHandler
     private let policy = ApprovalPolicy()
     private let verifier: (any AnswerVerifier)?
+    private let planner: (any TurnPlanner)?
 
     public init(
         mode: AgentMode,
@@ -29,9 +37,11 @@ public actor AgentSession {
         registry: ToolRegistry,
         approvalHandler: any ApprovalHandler,
         language: ConversationLanguage = .fromLocale(),
-        verifier: (any AnswerVerifier)? = nil
+        verifier: (any AnswerVerifier)? = nil,
+        planner: (any TurnPlanner)? = nil
     ) {
         self.verifier = verifier
+        self.planner = planner
         self.mode = mode
         self.provider = provider
         self.registry = registry
@@ -58,6 +68,19 @@ public actor AgentSession {
         language = ConversationLanguage.detect(text, fallback: language)
         transcript.append(ChatMessage(role: .user, text: text))
         let specs = await availableTools().map { $0.spec(in: language) }
+
+        // Run the obvious tool calls first, so the model only has to phrase the result.
+        if let planner {
+            let available = Set(specs.map(\.name))
+            let planned = await planner.plan(userText: text, language: language).filter { available.contains($0.name) }
+            if !planned.isEmpty {
+                transcript.append(ChatMessage(role: .assistant, text: "", toolCalls: planned))
+                for call in planned {
+                    let result = await execute(call)
+                    transcript.append(ChatMessage(role: .tool, text: result.content, toolCallID: call.id, isError: result.isError))
+                }
+            }
+        }
 
         for _ in 0..<mode.maxSteps {
             let request = ModelRequest(

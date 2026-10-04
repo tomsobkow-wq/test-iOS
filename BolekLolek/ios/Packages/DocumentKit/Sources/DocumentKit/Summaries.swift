@@ -5,7 +5,7 @@ public enum CategoryNames {
     public static func label(_ category: String, _ language: ConversationLanguage) -> String {
         guard language == .pl else { return category.replacingOccurrences(of: "_", with: " ") }
         return [
-            "groceries": "zakupy spożywcze", "eating_out": "jedzenie na mieście", "transport": "transport", "shopping": "zakupy",
+            "groceries": "zakupy spożywcze", "eating_out": "jedzenie na mieście", "transport": "transport", "fuel": "paliwo", "shopping": "zakupy",
             "health": "zdrowie", "subscriptions": "subskrypcje", "utilities": "rachunki i telekomunikacja", "housing": "mieszkanie",
             "taxes_insurance": "podatki i ubezpieczenia", "travel": "podróże", "cash": "gotówka", "fees": "opłaty bankowe",
             "interest": "odsetki", "loans": "kredyty i raty", "savings": "oszczędności", "transfers": "przelewy", "income": "wpływy",
@@ -39,6 +39,14 @@ enum DocumentPrompts {
             """
     }
 
+    static func extractSystem(_ language: ConversationLanguage) -> String {
+        """
+        Below are the key sentences of a document. Write a clear summary in \(languageName(language)): one sentence saying what the document is and who is involved, \
+        then up to 6 short bullet points with the important facts (amounts, dates, deadlines, obligations, penalties). \
+        Copy numbers, dates and the roles of people exactly as written. Use only these sentences. Do not invent anything.
+        """
+    }
+
     static func narrationSystem(_ language: ConversationLanguage) -> String {
         """
         You explain a bank statement summary to the user in \(languageName(language)), in a friendly and concise way (5 to 8 short lines). \
@@ -54,11 +62,21 @@ enum DocumentPrompts {
 public struct DocumentSummarizer: Sendable {
     public typealias Generate = @Sendable (_ system: String, _ user: String, _ maxTokens: Int) async throws -> String
 
+    public enum Strategy: Sendable {
+        /// Pick the sentences with amounts, dates, deadlines and obligations, then one model call to phrase them.
+        /// Fast and keeps the facts. The default.
+        case extractive
+        /// Summarise every part with the model, then merge. Slower, and a 4B model loses numbers on the way.
+        case mapReduce
+    }
+
     private let generate: Generate
-    /// How many parts the model reads. Each costs one model call, which takes seconds on a phone.
+    private let strategy: Strategy
+    /// How many parts the model reads in `.mapReduce`. Each costs one model call, which takes seconds on a phone.
     public let maxParts: Int
 
-    public init(maxParts: Int = 12, generate: @escaping Generate) {
+    public init(strategy: Strategy = .extractive, maxParts: Int = 12, generate: @escaping Generate) {
+        self.strategy = strategy
         self.maxParts = maxParts
         self.generate = generate
     }
@@ -83,6 +101,7 @@ public struct DocumentSummarizer: Sendable {
     public func summarize(
         chunks: [DocumentChunk], language: ConversationLanguage, progress: (@Sendable (Int, Int) -> Void)? = nil
     ) async throws -> String {
+        if strategy == .extractive { return try await summarizeExtractively(chunks: chunks, language: language, progress: progress) }
         let parts = Self.select(chunks, cap: maxParts)
         let total = parts.count + (parts.count > 1 ? (parts.count > 8 ? parts.count / 6 + 2 : 1) : 0)
         var done = 0
@@ -120,6 +139,19 @@ public struct DocumentSummarizer: Sendable {
     }
 }
 
+extension DocumentSummarizer {
+    func summarizeExtractively(chunks: [DocumentChunk], language: ConversationLanguage, progress: (@Sendable (Int, Int) -> Void)?) async throws -> String {
+        let brief = ExtractiveBrief.build(from: chunks)
+        guard !brief.isEmpty else { return language == .pl ? "Nie znalazłem w tym dokumencie tekstu do streszczenia." : "I found no text to summarise in this document." }
+        progress?(0, 1)
+        let summary = try await generate(DocumentPrompts.extractSystem(language), brief, 380).trimmingCharacters(in: .whitespacesAndNewlines)
+        progress?(1, 1)
+        // Anything with a number that is not in the extracts is dropped.
+        let cleaned = NumberGrounding.removeUngroundedLines(from: summary, sources: [brief]).trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleaned.isEmpty ? brief : cleaned
+    }
+}
+
 /// Turns the statement digest into a friendly message. If the model keeps getting numbers wrong, the
 /// answer is written by code instead, so the user never sees a wrong figure.
 public struct StatementNarrator: Sendable {
@@ -145,23 +177,59 @@ public struct StatementNarrator: Sendable {
     }
 
     /// Always correct, never fancy.
-    public static func fallback(_ s: ParsedStatement, language: ConversationLanguage) -> String {
-        let c = s.currency
+    public static func fallback(_ s: ParsedStatement, language: ConversationLanguage) -> String { StatementSummaryText.make(s, language: language) }
+}
+
+/// The summary shown when a statement is added. Written by code from the parsed numbers: correct Polish and English,
+/// no waiting for the model, nothing it can get wrong. The model's job is to answer questions and explain on request.
+public enum StatementSummaryText {
+    private static func pluralPL(_ n: Int, _ one: String, _ few: String, _ many: String) -> String {
+        if n == 1 { return one }
+        let lastTwo = n % 100, last = n % 10
+        return (2...4).contains(last) && !(12...14).contains(lastTwo) ? few : many
+    }
+
+    public static func make(_ s: ParsedStatement, language: ConversationLanguage) -> String {
         let pl = language == .pl
+        let c = s.currency
         func money(_ minor: Int) -> String { MoneyFormat.text(minor, currency: c) }
-        let credits = s.transactions.filter { $0.minorUnits > 0 }.reduce(0) { $0 + $1.minorUnits }
-        let debits = -s.transactions.filter { $0.minorUnits < 0 }.reduce(0) { $0 + $1.minorUnits }
+        let credits = s.transactions.filter { $0.minorUnits > 0 }
+        let debits = s.transactions.filter { $0.minorUnits < 0 }
+        let moneyIn = credits.reduce(0) { $0 + $1.minorUnits }
+        let moneyOut = -debits.reduce(0) { $0 + $1.minorUnits }
         let period = [s.periodStart, s.periodEnd].compactMap { $0 }.map(DateParsing.isoString).joined(separator: pl ? " – " : " to ")
-        var lines = [pl ? "Wyciąg za okres \(period): \(s.transactions.count) transakcji." : "Statement for \(period): \(s.transactions.count) transactions."]
-        lines.append(pl ? "Wpływy: \(money(credits)). Wydatki: \(money(debits)). Bilans: \(money(credits - debits))."
-                        : "Money in: \(money(credits)). Money out: \(money(debits)). Net: \(money(credits - debits)).")
-        let byCategory = Dictionary(grouping: s.transactions.filter { $0.minorUnits < 0 && !["savings", "transfers", "loans"].contains($0.category) }, by: \.category)
-            .map { ($0.key, -$0.value.reduce(0) { $0 + $1.minorUnits }) }.sorted { $0.1 > $1.1 }.prefix(3)
+        let who = s.bank.map { " \($0)" } ?? ""
+        let count = s.transactions.count
+
+        var lines: [String] = []
+        lines.append(pl ? "Wyciąg\(who), \(period): \(count) \(pluralPL(count, "transakcja", "transakcje", "transakcji"))."
+                        : "Statement\(who), \(period): \(count) transactions.")
+        lines.append(pl ? "Wpływy: \(money(moneyIn)). Wydatki: \(money(moneyOut)). Bilans: \(MoneyFormat.text(moneyIn - moneyOut, currency: c, signed: true))."
+                        : "Money in: \(money(moneyIn)). Money out: \(money(moneyOut)). Net: \(MoneyFormat.text(moneyIn - moneyOut, currency: c, signed: true)).")
+        if let opening = s.openingMinor, let closing = s.closingMinor {
+            lines.append(pl ? "Saldo początkowe \(money(opening)), końcowe \(money(closing))." : "Balance: \(money(opening)) at the start, \(money(closing)) at the end.")
+        } else if let closing = s.closingMinor ?? s.transactions.last?.balanceMinor {
+            lines.append(pl ? "Saldo na koniec: \(money(closing))." : "Balance at the end: \(money(closing)).")
+        }
+        let spending = debits.filter { !["savings", "transfers", "loans"].contains($0.category) }
+        let byCategory = Dictionary(grouping: spending, by: \.category).map { ($0.key, -$0.value.reduce(0) { $0 + $1.minorUnits }) }.sorted { $0.1 > $1.1 }.prefix(4)
         if !byCategory.isEmpty {
             lines.append((pl ? "Największe wydatki: " : "Biggest spending: ") + byCategory.map { "\(CategoryNames.label($0.0, language)) \(money($0.1))" }.joined(separator: ", ") + ".")
         }
+        let regular = StatementAnalyzer.recurring(s).map { ($0.merchant, $0.typicalMinor) }
+            + (StatementAnalyzer.recurring(s).isEmpty ? debits.filter { ["subscriptions", "housing"].contains($0.category) }.map { ($0.merchant, -$0.minorUnits) } : [])
+        if !regular.isEmpty {
+            lines.append((pl ? "Stałe płatności: " : "Regular payments: ") + regular.prefix(5).map { "\($0.0) \(money($0.1))" }.joined(separator: ", ") + ".")
+        }
+        var extras: [String] = []
+        let fees = -debits.filter { $0.category == "fees" }.reduce(0) { $0 + $1.minorUnits }
+        let cash = -debits.filter { $0.category == "cash" }.reduce(0) { $0 + $1.minorUnits }
+        if fees > 0 { extras.append((pl ? "opłaty bankowe " : "bank fees ") + money(fees)) }
+        if cash > 0 { extras.append((pl ? "wypłaty gotówki " : "cash withdrawals ") + money(cash)) }
+        if !extras.isEmpty { lines.append((pl ? "Do uwagi: " : "Worth knowing: ") + extras.joined(separator: ", ") + ".") }
         if s.reconciliation == .mismatch {
-            lines.append(pl ? "Uwaga: sumy nie zgadzają się z saldami, więc część transakcji mogła zostać pominięta lub źle odczytana." : "Warning: the totals do not match the balances, so some transactions may be missing or misread.")
+            lines.append(pl ? "Uwaga: sumy nie zgadzają się z saldami, więc część transakcji mogła zostać pominięta lub źle odczytana."
+                            : "Warning: the totals do not match the balances, so some transactions may be missing or misread.")
         }
         return lines.joined(separator: "\n")
     }

@@ -1,4 +1,5 @@
 import AgentCore
+import DocumentKit
 import Foundation
 
 public enum LolekError: LocalizedError, Sendable {
@@ -67,13 +68,13 @@ public struct LlamaCppProvider: ModelProvider {
 
     public func respond(to request: ModelRequest, onText: @escaping @Sendable (String) -> Void) async throws -> ModelResponse {
         let engine = try await host.loadedEngine()
-        let maxOutput = profile.maxOutputTokens
+        let maxOutput = request.maxOutputTokens ?? profile.maxOutputTokens
         let limit = profile.contextTokens - maxOutput
 
         // Drop the oldest turns until the prompt fits; the current turn is never dropped.
         var messages = request.messages
         func parts() -> (header: String, body: String, generation: String) {
-            renderer.renderParts(system: request.systemPrompt, messages: messages, tools: request.tools, timeZone: request.timeZone)
+            renderer.renderParts(system: request.systemPrompt, messages: messages, tools: request.tools, timeZone: request.includeClock ? request.timeZone : nil)
         }
         var prompt = parts()
         while try await engine.tokenCount(prompt.header + prompt.body + prompt.generation) > limit, let cut = Self.firstDroppableTurnEnd(in: messages) {
@@ -126,5 +127,18 @@ private final class Accumulator: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return text
+    }
+}
+
+extension LlamaCppProvider {
+    /// One-shot text generation for the document harness: a system prompt, some text, an answer.
+    public func documentGenerator(language: ConversationLanguage) -> DocumentSummarizer.Generate {
+        { system, user, maxTokens in
+            let request = ModelRequest(
+                mode: .lolek, systemPrompt: system, messages: [ChatMessage(role: .user, text: user)], tools: [], language: language,
+                maxOutputTokens: maxTokens, includeClock: false
+            )
+            return try await self.respond(to: request).text
+        }
     }
 }

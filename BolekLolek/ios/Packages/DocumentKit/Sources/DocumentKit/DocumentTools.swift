@@ -32,7 +32,7 @@ private func statement(_ store: DocumentStore, _ id: String?) async throws -> (S
 
 public struct ListDocumentsTool: Tool, ConditionallyAvailable {
     public let name = "list_documents"
-    public let description = LocalizedText(en: "List the documents and bank statements the user has added.", pl: "Wyświetl dokumenty i wyciągi bankowe dodane przez użytkownika.")
+    public let description = LocalizedText(en: "List the user's documents. Only needed when the user asks what documents exist or has several; other tools default to the latest document.", pl: "Wyświetl dokumenty użytkownika. Potrzebne tylko gdy użytkownik pyta, jakie ma dokumenty, lub ma ich kilka; pozostałe narzędzia domyślnie używają ostatniego dokumentu.")
     public let parametersSchema = #"{"type":"object","properties":{}}"#
     public let tier = ToolTier.lolek
     public let risk = ToolRisk.read
@@ -70,7 +70,7 @@ public struct StatementTransactionsTool: Tool, ConditionallyAvailable {
         en: "Find transactions in a bank statement and get exact totals for them. Use for any question like \"how much did I spend on X\", \"what did I pay to Y\", \"biggest payments in March\". Totals are computed exactly; never add numbers yourself.",
         pl: "Znajdź transakcje w wyciągu bankowym i podaj dokładne sumy. Użyj przy pytaniach typu „ile wydałem na X”, „co zapłaciłem Y”, „największe płatności w marcu”. Sumy są policzone dokładnie; nigdy nie dodawaj liczb samodzielnie."
     )
-    public let parametersSchema = #"{"type":"object","properties":{"document_id":{"type":"string"},"from":{"type":"string","description":"YYYY-MM-DD"},"to":{"type":"string","description":"YYYY-MM-DD"},"category":{"type":"string","enum":["groceries","eating_out","transport","shopping","health","subscriptions","utilities","housing","taxes_insurance","travel","cash","fees","interest","loans","savings","transfers","income","refund","other"]},"merchant":{"type":"string"},"search":{"type":"string","description":"word in the description"},"direction":{"type":"string","enum":["in","out"]},"min_amount":{"type":"number"},"max_amount":{"type":"number"},"sort":{"type":"string","enum":["date","amount"]},"limit":{"type":"integer"}}}"#
+    public let parametersSchema = #"{"type":"object","properties":{"document_id":{"type":"string"},"from":{"type":"string","description":"YYYY-MM-DD"},"to":{"type":"string","description":"YYYY-MM-DD"},"category":{"type":"string","enum":["groceries","eating_out","transport","fuel","shopping","health","subscriptions","utilities","housing","taxes_insurance","travel","cash","fees","interest","loans","savings","transfers","income","refund","other"]},"merchant":{"type":"string"},"search":{"type":"string","description":"word in the description"},"direction":{"type":"string","enum":["in","out"]},"min_amount":{"type":"number"},"max_amount":{"type":"number"},"sort":{"type":"string","enum":["date","amount"]},"limit":{"type":"integer"}}}"#
     public let tier = ToolTier.lolek
     public let risk = ToolRisk.read
     let store: DocumentStore

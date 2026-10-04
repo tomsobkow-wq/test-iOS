@@ -21,7 +21,7 @@ enum Fixtures {
         TruthRow(day: "2026-03-05", minor: -240_000, text: "CZYNSZ ZA MARZEC WSPÓLNOTA MIESZKANIOWA", merchant: nil, category: "housing"),
         TruthRow(day: "2026-03-07", minor: -3_840, text: "PŁATNOŚĆ KARTĄ ŻABKA Z1234 KRAKÓW", merchant: "Żabka", category: "groceries"),
         TruthRow(day: "2026-03-09", minor: -2_900, text: "SPOTIFY P3A8", merchant: "Spotify", category: "subscriptions"),
-        TruthRow(day: "2026-03-10", minor: -8_735, text: "PŁATNOŚĆ KARTĄ ORLEN STACJA 4521", merchant: "Orlen", category: "transport"),
+        TruthRow(day: "2026-03-10", minor: -8_735, text: "PŁATNOŚĆ KARTĄ ORLEN STACJA 4521", merchant: "Orlen", category: "fuel"),
         TruthRow(day: "2026-03-12", minor: -15_220, text: "PŁATNOŚĆ KARTĄ LIDL 0456", merchant: "Lidl", category: "groceries"),
         TruthRow(day: "2026-03-14", minor: -6_490, text: "UBER *TRIP HELP.UBER.COM", merchant: "Uber", category: "transport"),
         TruthRow(day: "2026-03-15", minor: -19_900, text: "ALLEGRO PAYMENT 7384929", merchant: "Allegro", category: "shopping"),

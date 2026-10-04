@@ -9,6 +9,10 @@ public struct ModelRequest: Sendable {
     /// When this request is made, for providers that tell the model the date.
     public let now: Date
     public let timeZone: TimeZone
+    /// Overrides the profile's output limit for this call (summaries need less, narration more).
+    public let maxOutputTokens: Int?
+    /// False for one-off prompts (summarising a document) where a date stamp is noise.
+    public let includeClock: Bool
 
     public init(
         mode: AgentMode,
@@ -17,7 +21,9 @@ public struct ModelRequest: Sendable {
         tools: [ToolSpec],
         language: ConversationLanguage,
         now: Date = Date(),
-        timeZone: TimeZone = .current
+        timeZone: TimeZone = .current,
+        maxOutputTokens: Int? = nil,
+        includeClock: Bool = true
     ) {
         self.mode = mode
         self.systemPrompt = systemPrompt
@@ -26,6 +32,8 @@ public struct ModelRequest: Sendable {
         self.language = language
         self.now = now
         self.timeZone = timeZone
+        self.maxOutputTokens = maxOutputTokens
+        self.includeClock = includeClock
     }
 }
 

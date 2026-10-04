@@ -37,6 +37,9 @@ public enum NumberGrounding {
         return Number(cents: wholeValue * 100 + cents, hadDecimals: !fraction.isEmpty, text: token)
     }
 
+    /// Every number in the text, in hundredths. For scoring answers against known values.
+    public static func numberCents(in text: String) -> [Int] { numbers(in: text).map(\.cents) }
+
     /// Numbers in `answer` that cannot be found in `sources`. Small whole numbers (counts, days, times, years) are free.
     public static func ungrounded(answer: String, sources: [String]) -> [String] {
         let known = Set(sources.flatMap { numbers(in: $0) }.map(\.cents))
@@ -64,7 +67,7 @@ public struct GroundingVerifier: AnswerVerifier {
     public init() {}
 
     public func review(answer: String, toolNames: [String], toolResults: [String], userText: String, language: ConversationLanguage) -> String? {
-        guard toolNames.contains(where: { $0.hasPrefix("statement_") || $0 == "document_summary" }) else { return nil }
+        guard toolNames.contains(where: { $0.hasPrefix("statement_") || $0.hasPrefix("document_") || $0 == "list_documents" }) else { return nil }
         let missing = NumberGrounding.ungrounded(answer: answer, sources: toolResults + [userText])
         guard !missing.isEmpty else { return nil }
         let list = missing.prefix(5).joined(separator: ", ")
