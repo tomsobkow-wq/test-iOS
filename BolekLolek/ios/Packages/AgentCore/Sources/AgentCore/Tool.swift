@@ -84,6 +84,12 @@ extension Tool {
     }
 }
 
+/// A tool that only makes sense in some situations (document tools when documents exist). Hidden tools
+/// cost no prompt space, which matters for a small on-device model.
+public protocol ConditionallyAvailable: Tool {
+    func isAvailable() async -> Bool
+}
+
 /// All tools known to a session. Each mode only ever sees the tools its tier allows.
 public struct ToolRegistry: Sendable {
     private let toolsByName: [String: any Tool]

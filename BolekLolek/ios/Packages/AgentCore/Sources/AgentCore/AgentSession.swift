@@ -33,7 +33,7 @@ public actor AgentSession {
             mode: mode,
             systemPrompt: SystemPrompt.text(for: mode, language: language),
             messages: [],
-            tools: registry.tools(for: mode).map { $0.spec(in: language) },
+            tools: await availableTools().map { $0.spec(in: language) },
             language: language
         )
         await provider.warmUp(for: request)
@@ -45,7 +45,7 @@ public actor AgentSession {
         let start = transcript.count
         language = ConversationLanguage.detect(text, fallback: language)
         transcript.append(ChatMessage(role: .user, text: text))
-        let specs = registry.tools(for: mode).map { $0.spec(in: language) }
+        let specs = await availableTools().map { $0.spec(in: language) }
 
         for _ in 0..<mode.maxSteps {
             let request = ModelRequest(
@@ -76,6 +76,15 @@ public actor AgentSession {
             text: SystemPrompt.stepLimitNotice(mode.maxSteps, language: language)
         ))
         return Array(transcript[start...])
+    }
+
+    private func availableTools() async -> [any Tool] {
+        var tools: [any Tool] = []
+        for tool in registry.tools(for: mode) {
+            if let conditional = tool as? any ConditionallyAvailable, !(await conditional.isAvailable()) { continue }
+            tools.append(tool)
+        }
+        return tools
     }
 
     private func execute(_ call: ToolCall) async -> ToolResult {
