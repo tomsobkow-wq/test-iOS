@@ -81,8 +81,9 @@ final class RemoteToolsTests: XCTestCase {
 
     func testAlertsDecodeAndSeenIsPosted() async throws {
         let box = RequestBox()
-        let alerts = try await client(json: #"{"alerts":[{"id":4,"message":"Warsaw to Rome is now 89 EUR"}]}"#).alerts(since: 3)
-        XCTAssertEqual(alerts, [BackendAlert(id: 4, message: "Warsaw to Rome is now 89 EUR")])
+        let alerts = try await client(json: #"{"alerts":[{"id":4,"watchId":"ab","createdAt":1,"title":"Price drop: WAW to FCO","body":"89.00 EUR (your limit 100.00 EUR).","priceMinor":8900,"currency":"EUR","seen":false}]}"#).alerts(since: 3)
+        XCTAssertEqual(alerts, [BackendAlert(id: 4, title: "Price drop: WAW to FCO", body: "89.00 EUR (your limit 100.00 EUR).")])
+        XCTAssertEqual(alerts.first?.message, "Price drop: WAW to FCO\n89.00 EUR (your limit 100.00 EUR).")
         try await client(json: #"{"ok":true}"#, record: box).markAlertsSeen(upTo: 4)
         XCTAssertEqual(box.request?.httpMethod, "POST")
         XCTAssertEqual(box.request?.url?.path, "/v1/alerts/seen")

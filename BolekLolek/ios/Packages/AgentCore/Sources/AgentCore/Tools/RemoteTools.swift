@@ -15,7 +15,17 @@ public struct BackendConfig: Sendable, Equatable {
 /// One alert the server stored, such as a watched fare dropping below the user's threshold.
 public struct BackendAlert: Codable, Sendable, Equatable, Identifiable {
     public let id: Int
-    public let message: String
+    public let title: String
+    public let body: String
+
+    public init(id: Int, title: String, body: String) {
+        self.id = id
+        self.title = title
+        self.body = body
+    }
+
+    /// The text shown as a message from Bolek.
+    public var message: String { "\(title)\n\(body)" }
 }
 
 public enum BackendError: LocalizedError, Sendable, Equatable {
