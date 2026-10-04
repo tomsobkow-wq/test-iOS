@@ -6,19 +6,26 @@ public struct ModelRequest: Sendable {
     public let messages: [ChatMessage]
     public let tools: [ToolSpec]
     public let language: ConversationLanguage
+    /// When this request is made, for providers that tell the model the date.
+    public let now: Date
+    public let timeZone: TimeZone
 
     public init(
         mode: AgentMode,
         systemPrompt: String,
         messages: [ChatMessage],
         tools: [ToolSpec],
-        language: ConversationLanguage
+        language: ConversationLanguage,
+        now: Date = Date(),
+        timeZone: TimeZone = .current
     ) {
         self.mode = mode
         self.systemPrompt = systemPrompt
         self.messages = messages
         self.tools = tools
         self.language = language
+        self.now = now
+        self.timeZone = timeZone
     }
 }
 
@@ -36,8 +43,21 @@ public struct ModelResponse: Sendable, Equatable {
 }
 
 /// A "brain". Lolek uses an on-device llama.cpp provider, Bolek a remote one.
-/// Streaming is added with the real runtimes (build step 2).
 public protocol ModelProvider: Sendable {
     var profile: ModelProfile { get }
     func respond(to request: ModelRequest) async throws -> ModelResponse
+    /// Like `respond(to:)`, but calls `onText` with the answer so far (the full visible text
+    /// each time, never tool-call markup). Providers that cannot stream use the default.
+    func respond(to request: ModelRequest, onText: @escaping @Sendable (String) -> Void) async throws -> ModelResponse
+    /// Lets an on-device provider read the fixed part of the prompt (system text and tools) ahead of
+    /// the first message. The default does nothing.
+    func warmUp(for request: ModelRequest) async
+}
+
+extension ModelProvider {
+    public func warmUp(for request: ModelRequest) async {}
+
+    public func respond(to request: ModelRequest, onText: @escaping @Sendable (String) -> Void) async throws -> ModelResponse {
+        try await respond(to: request)
+    }
 }

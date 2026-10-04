@@ -68,7 +68,8 @@ public struct OpenRouterProvider: ModelProvider {
 
     public func respond(to request: ModelRequest) async throws -> ModelResponse {
         guard let key = apiKey(), !key.isEmpty else { throw OpenRouterError.missingKey }
-        let messages = Self.messages(systemPrompt: request.systemPrompt, from: request.messages)
+        let system = request.systemPrompt + "\n\n" + PromptClock.line(now: request.now, timeZone: request.timeZone, language: request.language)
+        let messages = Self.messages(systemPrompt: system, from: request.messages)
         let body = Self.body(profile: profile, options: options, request: request, messages: messages)
 
         var http = URLRequest(url: options.baseURL.appendingPathComponent("chat/completions"))

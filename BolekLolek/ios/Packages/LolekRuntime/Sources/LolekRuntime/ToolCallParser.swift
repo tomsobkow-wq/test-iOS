@@ -9,9 +9,16 @@ public enum ToolCallParser {
         public let calls: [ToolCall]
     }
 
+    /// The renderer stamps user messages with "[Monday 2026-10-05 09:41]"; some models copy it into their reply.
+    static func stripEchoedStamp(_ text: String) -> String {
+        text.replacingOccurrences(of: #"^\s*\[[A-Za-z]+ \d{4}-\d{2}-\d{2} \d{2}:\d{2}\]\s*"#, with: "", options: .regularExpression)
+    }
+
     public static func parse(_ raw: String, tools: [ToolSpec]) -> Parsed {
-        let withoutThinking = stripThinking(raw)
+        let withoutThinking = stripEchoedStamp(stripThinking(raw))
         guard let firstCall = withoutThinking.range(of: "<tool_call>") else {
+            // Models that were not trained on tools (Bielik) often write the JSON without the tags.
+            if let call = bareJSONCall(in: withoutThinking, tools: tools) { return Parsed(text: "", calls: [call]) }
             return Parsed(text: withoutThinking.trimmingCharacters(in: .whitespacesAndNewlines), calls: [])
         }
         let before = String(withoutThinking[..<firstCall.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -58,7 +65,7 @@ public enum ToolCallParser {
                 }
             }
         }
-        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return stripEchoedStamp(text).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Internals
@@ -74,6 +81,21 @@ public enum ToolCallParser {
         }
         if let strayClose = out.range(of: "</think>") { out = String(out[strayClose.upperBound...]) }
         return out
+    }
+
+    /// The whole answer is one JSON object `{"name": ..., "arguments": {...}}` naming a tool we offered
+    /// (optionally inside a ``` fence). Random JSON the user asked for is left alone.
+    static func bareJSONCall(in text: String, tools: [ToolSpec]) -> ToolCall? {
+        var body = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if body.hasPrefix("```") {
+            body = body.drop(while: { $0 != "\n" }).dropFirst().description
+            if let fence = body.range(of: "```", options: .backwards) { body = String(body[..<fence.lowerBound]) }
+            body = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        guard body.hasPrefix("{"), body.hasSuffix("}"),
+              let call = parseJSON(body), tools.contains(where: { $0.name == call.name })
+        else { return nil }
+        return call
     }
 
     private static func parseBlock(_ block: String, tools: [ToolSpec]) -> ToolCall? {

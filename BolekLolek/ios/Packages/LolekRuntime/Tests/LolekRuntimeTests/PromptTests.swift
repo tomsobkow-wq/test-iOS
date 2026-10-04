@@ -101,6 +101,24 @@ final class ToolCallParserTests: XCTestCase {
         XCTAssertEqual(parsed, .init(text: "Warszawa.", calls: []))
     }
 
+    func testBareJSONCallForKnownToolOnly() {
+        let known = ToolCallParser.parse(#"{"name": "get_weather", "arguments": {"place": "Kraków"}}"#, tools: tools)
+        XCTAssertEqual(known.calls.first?.name, "get_weather")
+        XCTAssertEqual(known.text, "")
+        let fenced = ToolCallParser.parse("```json\n{\"name\": \"set_timer\", \"arguments\": {\"seconds\": 600}}\n```", tools: tools)
+        XCTAssertEqual(fenced.calls.first?.name, "set_timer")
+        let unknown = ToolCallParser.parse(#"{"name": "launch_missiles", "arguments": {}}"#, tools: tools)
+        XCTAssertTrue(unknown.calls.isEmpty, "a name we did not offer is not a call")
+        let json = ToolCallParser.parse(#"{"colour": "red"}"#, tools: tools)
+        XCTAssertTrue(json.calls.isEmpty)
+    }
+
+    func testEchoedTimestampIsRemoved() {
+        XCTAssertEqual(ToolCallParser.parse("[Sunday 2026-10-04 20:12] Cześć!", tools: tools).text, "Cześć!")
+        XCTAssertEqual(ToolCallParser.visibleText(streaming: "[Sunday 2026-10-04 20:12] Cześć"), "Cześć")
+        XCTAssertEqual(ToolCallParser.parse("Spotkanie [pt 10:00] jutro", tools: tools).text, "Spotkanie [pt 10:00] jutro")
+    }
+
     func testGarbageCallIsIgnored() {
         let parsed = ToolCallParser.parse("<tool_call>\nnot json at all\n</tool_call>", tools: tools)
         XCTAssertTrue(parsed.calls.isEmpty)
@@ -112,5 +130,32 @@ final class ToolCallParserTests: XCTestCase {
         XCTAssertEqual(ToolCallParser.visibleText(streaming: "Wynik: 3 < 5"), "Wynik: 3 < 5")
         XCTAssertEqual(ToolCallParser.visibleText(streaming: "<think>\nplanning"), "")
         XCTAssertEqual(ToolCallParser.visibleText(streaming: "<think>\nx\n</think>\n\nHej"), "Hej")
+    }
+}
+
+final class PromptPartsTests: XCTestCase {
+    private let tools = [ToolSpec(name: "get_weather", description: "w", parametersSchema: #"{"type":"object","properties":{"place":{"type":"string"}}}"#)]
+
+    func testPartsReassembleToTheFullPromptAndHeaderIsStable() {
+        for style in [PromptStyle.qwen35, .plainChatML] {
+            let renderer = PromptRenderer(style: style)
+            let short = [ChatMessage(role: .user, text: "Hi")]
+            let long = short + [ChatMessage(role: .assistant, text: "Hello"), ChatMessage(role: .user, text: "Weather?")]
+            let a = renderer.renderParts(system: "S", messages: short, tools: tools)
+            let b = renderer.renderParts(system: "S", messages: long, tools: tools)
+            XCTAssertEqual(a.header + a.body + a.generation, renderer.render(system: "S", messages: short, tools: tools))
+            XCTAssertEqual(a.header, b.header, "\(style): the header must not depend on the conversation")
+            XCTAssertEqual(a.header, renderer.renderHeader(system: "S", tools: tools))
+        }
+    }
+
+    func testTimestampsGoOnUserMessagesOnly() {
+        let zone = TimeZone(identifier: "Europe/Warsaw")!
+        let date = ISO8601DateFormatter().date(from: "2026-10-05T07:41:00Z")!
+        let messages = [ChatMessage(role: .user, text: "Pogoda?", createdAt: date), ChatMessage(role: .assistant, text: "Słonecznie.", createdAt: date)]
+        let parts = PromptRenderer(style: .plainChatML).renderParts(system: "S", messages: messages, tools: [], timeZone: zone)
+        XCTAssertTrue(parts.body.contains("[Monday 2026-10-05 09:41] Pogoda?"), parts.body)
+        XCTAssertTrue(parts.body.contains("Słonecznie."))
+        XCTAssertFalse(parts.body.contains("[Monday 2026-10-05 09:41] Słonecznie"))
     }
 }

@@ -5,6 +5,8 @@ import SwiftUI
 /// as a question with reply buttons under it, never as a separate screen.
 struct ChatView: View {
     @Bindable var viewModel: ChatViewModel
+    /// Only for Lolek: the one-time model download.
+    var setup: LolekSetupModel?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -14,11 +16,18 @@ struct ChatView: View {
                         if viewModel.visibleMessages.isEmpty {
                             Bubble(text: Text(viewModel.mode.intro), isMine: false, accent: viewModel.mode.accent)
                         }
+                        if let setup, !setup.isReady {
+                            SetupBubble(setup: setup, accent: viewModel.mode.accent)
+                        }
                         ForEach(viewModel.visibleMessages) { message in
                             Bubble(text: Text(verbatim: message.text), isMine: message.role == .user, accent: viewModel.mode.accent)
                         }
                         if viewModel.isWorking, viewModel.approvals.pending == nil {
-                            TypingBubble()
+                            if viewModel.streamingText.isEmpty {
+                                TypingBubble()
+                            } else {
+                                Bubble(text: Text(verbatim: viewModel.streamingText), isMine: false, accent: viewModel.mode.accent)
+                            }
                         }
                         if let pending = viewModel.approvals.pending {
                             ApprovalMessage(request: pending.request, accent: viewModel.mode.accent) {
@@ -40,6 +49,7 @@ struct ChatView: View {
                 .onChange(of: viewModel.messages.count) { scrollToBottom(proxy) }
                 .onChange(of: viewModel.approvals.pending?.id) { scrollToBottom(proxy) }
                 .onChange(of: viewModel.isWorking) { scrollToBottom(proxy) }
+                .onChange(of: viewModel.streamingText) { scrollToBottom(proxy) }
             }
 
             Composer(viewModel: viewModel)
@@ -157,5 +167,32 @@ struct Composer: View {
         .padding(.horizontal, 14)
         .padding(.top, 8)
         .padding(.bottom, 8)
+    }
+}
+
+/// "Lolek needs to download his brain once." Progress and the button live in the chat.
+struct SetupBubble: View {
+    @Bindable var setup: LolekSetupModel
+    let accent: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            switch setup.state {
+            case .needsDownload:
+                Bubble(text: Text("Lolek needs to download his brain once (\(setup.sizeText)). Wi-Fi is best. After that he works offline and nothing leaves this phone."), isMine: false, accent: accent)
+                PillButton(title: "Download", accent: accent) { setup.start() }
+            case let .downloading(fraction):
+                Bubble(text: Text("Getting Lolek ready… \(Int(fraction * 100))%"), isMine: false, accent: accent)
+                ProgressView(value: fraction).tint(accent).padding(.horizontal, 6)
+            case .verifying:
+                Bubble(text: Text("Checking the download…"), isMine: false, accent: accent)
+            case let .failed(message):
+                Bubble(text: Text(verbatim: message), isMine: false, accent: accent)
+                PillButton(title: "Try again", accent: accent) { setup.start() }
+            case .ready:
+                EmptyView()
+            }
+        }
+        .padding(.bottom, 4)
     }
 }

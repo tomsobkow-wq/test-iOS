@@ -1,5 +1,7 @@
 import AgentCore
+import LolekRuntime
 import Observation
+import UIKit
 
 @MainActor
 @Observable
@@ -7,13 +9,15 @@ final class AppModel {
     var mode: AgentMode = .lolek
     let lolek: ChatViewModel
     let bolek: ChatViewModel
+    let lolekSetup = LolekSetupModel()
+    private let lolekProvider = LlamaCppProvider()
 
     init() {
         // Each mode has its own chat and approvals. Device tools and the spending
         // log are the iPhone's own, so both assistants see the same ones.
         lolek = ChatViewModel(
             mode: .lolek,
-            provider: DemoModelProvider(profile: ModelCatalog.lolekDefault),
+            provider: lolekProvider,
             registry: Self.makeRegistry()
         )
         bolek = ChatViewModel(
@@ -21,6 +25,15 @@ final class AppModel {
             provider: BolekBrain(),
             registry: Self.makeRegistry()
         )
+
+        // Load the model in the background so the first message is not slow, and drop it
+        // (about 3 GB) if iOS asks for memory back.
+        let host = lolekProvider.engineHost
+        lolekSetup.onReady = { [weak lolek] in Task { @MainActor in lolek?.warmUp() } }
+        if lolekSetup.isReady { lolekSetup.onReady?() }
+        NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification, object: nil, queue: nil) { _ in
+            Task { await host.unload() }
+        }
     }
 
     var current: ChatViewModel {

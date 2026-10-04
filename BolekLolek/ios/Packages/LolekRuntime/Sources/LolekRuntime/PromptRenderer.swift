@@ -22,11 +22,48 @@ public struct PromptRenderer: Sendable {
     }
 
     /// The full prompt, ending where the assistant should start writing.
-    public func render(system: String, messages: [ChatMessage], tools: [ToolSpec]) -> String {
+    /// `timeZone` adds a "[Monday 2026-10-05 09:41]" stamp to each user message so the model knows
+    /// the date without it appearing in the (cached) system prompt. Nil leaves messages untouched.
+    public func render(system: String, messages: [ChatMessage], tools: [ToolSpec], timeZone: TimeZone? = nil) -> String {
+        let parts = renderParts(system: system, messages: messages, tools: tools, timeZone: timeZone)
+        return parts.header + parts.body + parts.generation
+    }
+
+    /// Just the fixed opening: instructions and tools, the same for every conversation.
+    public func renderHeader(system: String, tools: [ToolSpec]) -> String {
         switch style {
-        case .qwen35: renderQwen(system: system, messages: messages, tools: tools)
-        case .plainChatML: renderPlain(system: system, messages: messages, tools: tools)
+        case .qwen35: renderQwen(system: system, messages: [], tools: tools)
+        case .plainChatML: Self.plainHeader(system: system, tools: tools)
         }
+    }
+
+    /// The prompt split where the assistant's turn starts. Everything in `body` is stable between
+    /// steps, so the engine can checkpoint the model's memory there and skip re-reading it next time.
+    /// `header` (system text and tools) is identical in every conversation, `body` is the conversation.
+    public func renderParts(system: String, messages: [ChatMessage], tools: [ToolSpec], timeZone: TimeZone? = nil) -> (header: String, body: String, generation: String) {
+        let stamped = timeZone.map { zone in
+            messages.map { message -> ChatMessage in
+                guard message.role == .user else { return message }
+                return ChatMessage(
+                    id: message.id, role: .user,
+                    text: "[\(PromptClock.stamp(message.createdAt, timeZone: zone))] " + message.text,
+                    createdAt: message.createdAt
+                )
+            }
+        } ?? messages
+        let header = renderHeader(system: system, tools: tools)
+        let full: String
+        let generation: String
+        switch style {
+        case .qwen35:
+            full = renderQwen(system: system, messages: stamped, tools: tools)
+            generation = "<|im_start|>assistant\n<think>\n\n</think>\n\n"
+        case .plainChatML:
+            full = renderPlain(system: system, messages: stamped, tools: tools)
+            generation = "<|im_start|>assistant\n"
+        }
+        precondition(full.hasPrefix(header), "the header must be a prefix of the full prompt")
+        return (header, String(full.dropFirst(header.count)), generation)
     }
 
     // MARK: - Qwen3.5
@@ -111,12 +148,12 @@ public struct PromptRenderer: Sendable {
                 if !nextIsTool { out += "<|im_end|>\n" }
             }
         }
-        return out + "<|im_start|>assistant\n<think>\n\n</think>\n\n"
+        return out
     }
 
     // MARK: - Bielik (plain ChatML)
 
-    private func renderPlain(system: String, messages: [ChatMessage], tools: [ToolSpec]) -> String {
+    private static func plainHeader(system: String, tools: [ToolSpec]) -> String {
         var systemText = system
         if !tools.isEmpty {
             systemText += "\n\n# Tools\nYou can call these functions when needed:\n<tools>"
@@ -133,7 +170,11 @@ public struct PromptRenderer: Sendable {
             """
         }
 
-        var out = "<s><|im_start|>system\n" + systemText + "<|im_end|>\n"
+        return "<s><|im_start|>system\n" + systemText + "<|im_end|>\n"
+    }
+
+    private func renderPlain(system: String, messages: [ChatMessage], tools: [ToolSpec]) -> String {
+        var out = Self.plainHeader(system: system, tools: tools)
         let conversation = messages.filter { $0.role != .system }
         for (index, message) in conversation.enumerated() {
             switch message.role {
@@ -157,7 +198,7 @@ public struct PromptRenderer: Sendable {
                 if !nextIsTool { out += "<|im_end|>\n" }
             }
         }
-        return out + "<|im_start|>assistant\n"
+        return out
     }
 
     // MARK: - Shared

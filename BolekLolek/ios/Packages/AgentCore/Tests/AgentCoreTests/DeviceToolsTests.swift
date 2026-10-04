@@ -298,9 +298,15 @@ final class DeviceToolsTests: XCTestCase {
 }
 
 final class SystemPromptClockTests: XCTestCase {
-    func testPromptContainsCurrentDate() {
-        let text = SystemPrompt.text(for: .lolek, language: .en, now: now, timeZone: warsaw.timeZone)
+    func testClockLineHasDateAndZone() {
+        let text = PromptClock.line(now: now, timeZone: warsaw.timeZone, language: .en)
         XCTAssertTrue(text.contains("Monday 2026-10-05 09:41 (Europe/Warsaw)"), text)
+    }
+
+    func testSystemPromptIsStableOverTime() {
+        // On-device models cache the prompt prefix; a clock in it would break the cache every minute.
+        XCTAssertEqual(SystemPrompt.text(for: .lolek, language: .pl), SystemPrompt.text(for: .lolek, language: .pl))
+        XCTAssertFalse(SystemPrompt.text(for: .lolek, language: .en).contains("20"))
     }
 }
 

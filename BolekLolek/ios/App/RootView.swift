@@ -26,8 +26,8 @@ extension AgentMode {
 
     var intro: LocalizedStringKey {
         switch self {
-        case .lolek: "Hi, I'm Lolek. I run only on this iPhone and never talk to any server. Try “weather”, “alarm: 06:30” or “note: buy milk”."
-        case .bolek: "Hi, I'm Bolek. I can act for you on the web and in your apps. This is a demo model for now. Try “weather”, “spending: this_week” or “call: Anna”."
+        case .lolek: "Hi, I'm Lolek. I run only on this iPhone and never talk to any server. Ask me about the weather, set an alarm, or text a friend."
+        case .bolek: "Hi, I'm Bolek, the full agent. Ask me anything, or tell me what to do on your phone."
         }
     }
 }
@@ -39,7 +39,7 @@ struct RootView: View {
         VStack(spacing: 0) {
             ModeHeader(selection: $model.mode)
             Divider()
-            ChatView(viewModel: model.current)
+            ChatView(viewModel: model.current, setup: model.mode == .lolek ? model.lolekSetup : nil)
                 .id(model.mode)
         }
         .tint(model.mode.accent)

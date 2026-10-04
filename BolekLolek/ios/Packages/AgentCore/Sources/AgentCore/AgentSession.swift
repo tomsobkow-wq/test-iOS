@@ -27,9 +27,21 @@ public actor AgentSession {
         self.language = language
     }
 
+    /// Reads the fixed prompt (instructions and tool list) ahead of time so the first message is quick.
+    public func warmUp() async {
+        let request = ModelRequest(
+            mode: mode,
+            systemPrompt: SystemPrompt.text(for: mode, language: language),
+            messages: [],
+            tools: registry.tools(for: mode).map { $0.spec(in: language) },
+            language: language
+        )
+        await provider.warmUp(for: request)
+    }
+
     /// Runs one user turn to completion. Returns the messages added in this turn.
     @discardableResult
-    public func send(_ text: String) async throws -> [ChatMessage] {
+    public func send(_ text: String, onText: (@Sendable (String) -> Void)? = nil) async throws -> [ChatMessage] {
         let start = transcript.count
         language = ConversationLanguage.detect(text, fallback: language)
         transcript.append(ChatMessage(role: .user, text: text))
@@ -43,7 +55,7 @@ public actor AgentSession {
                 tools: specs,
                 language: language
             )
-            let response = try await provider.respond(to: request)
+            let response = try await provider.respond(to: request, onText: onText ?? { _ in })
             transcript.append(ChatMessage(role: .assistant, text: response.text, toolCalls: response.toolCalls, providerState: response.providerState))
             if response.toolCalls.isEmpty {
                 return Array(transcript[start...])

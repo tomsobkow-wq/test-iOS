@@ -100,6 +100,76 @@
           }
         }
       }
+    },
+    "Download": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pobierz"
+          }
+        }
+      }
+    },
+    "Try again": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spróbuj ponownie"
+          }
+        }
+      }
+    },
+    "Checking the download…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprawdzam pobrany plik…"
+          }
+        }
+      }
+    },
+    "Lolek needs to download his brain once (%@). Wi-Fi is best. After that he works offline and nothing leaves this phone.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lolek musi raz pobrać swój „mózg” (%@). Najlepiej przez Wi-Fi. Potem działa offline i nic nie opuszcza tego telefonu."
+          }
+        }
+      }
+    },
+    "Getting Lolek ready… %lld%%": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przygotowuję Lolka… %lld%%"
+          }
+        }
+      }
+    },
+    "Hi, I'm Lolek. I run only on this iPhone and never talk to any server. Ask me about the weather, set an alarm, or text a friend.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cześć, jestem Lolek. Działam tylko na tym iPhonie i nie łączę się z żadnym serwerem. Zapytaj o pogodę, ustaw budzik albo napisz do znajomego."
+          }
+        }
+      }
+    },
+    "Hi, I'm Bolek, the full agent. Ask me anything, or tell me what to do on your phone.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cześć, jestem Bolek, pełny agent. Zapytaj o cokolwiek albo powiedz, co zrobić w telefonie."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

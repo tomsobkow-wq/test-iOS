@@ -93,8 +93,10 @@ extension ModelProfile {
 }
 
 public enum ModelCatalog {
-    /// Lolek's model. Switch to `.qwen35_4B` here if the evals favour it.
-    public static let lolekDefault: ModelProfile = .bielikV3_4_5B
-    public static let lolekAlternatives: [ModelProfile] = [.qwen35_4B]
+    /// Lolek's model, chosen by the tool-calling scorecard (LolekRuntime LiveModelTests, 12 Polish and
+    /// English requests, strict scoring): Qwen3.5 4B 12/12 on every run, Bielik v3 4.5B 9-10/12 with
+    /// invented tool calls on greetings and jokes. Bielik stays available for Polish prose comparisons.
+    public static let lolekDefault: ModelProfile = .qwen35_4B
+    public static let lolekAlternatives: [ModelProfile] = [.bielikV3_4_5B]
     public static let bolek: ModelProfile = .kimiK3
 }
