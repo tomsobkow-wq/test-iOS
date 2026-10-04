@@ -1,0 +1,198 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%lld actions in this chat": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld action in this chat"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld actions in this chat"
+                }
+              }
+            }
+          }
+        },
+        "pl": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld akcja w tym czacie"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld akcje w tym czacie"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld akcji w tym czacie"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld akcji w tym czacie"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Action completed": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Akcja wykonana"
+          }
+        }
+      }
+    },
+    "Action not completed": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Akcja niewykonana"
+          }
+        }
+      }
+    },
+    "Allow once": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zezwól jednorazowo"
+          }
+        }
+      }
+    },
+    "Always allow": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zawsze zezwalaj"
+          }
+        }
+      }
+    },
+    "Approval needed": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wymagana zgoda"
+          }
+        }
+      }
+    },
+    "Bolek": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bolek"
+          }
+        }
+      }
+    },
+    "Deny": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odmów"
+          }
+        }
+      }
+    },
+    "Full agent · EU cloud": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pełny agent · chmura w UE"
+          }
+        }
+      }
+    },
+    "Hi, I'm Bolek. I can act for you on the web and in your apps. This is a demo model for now. Try: “send: hello to Anna”.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cześć, jestem Bolek. Mogę działać za Ciebie w internecie i w Twoich aplikacjach. Na razie to model demonstracyjny. Spróbuj: „wyślij: cześć do Anny”."
+          }
+        }
+      }
+    },
+    "Hi, I'm Lolek. I run only on this iPhone and never talk to any server. Try: “note: buy milk”.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cześć, jestem Lolek. Działam tylko na tym iPhonie i nie łączę się z żadnym serwerem. Spróbuj: „notatka: kupić mleko”."
+          }
+        }
+      }
+    },
+    "Lolek": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lolek"
+          }
+        }
+      }
+    },
+    "Message": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiadomość"
+          }
+        }
+      }
+    },
+    "Private · on this iPhone": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prywatny · na tym iPhonie"
+          }
+        }
+      }
+    },
+    "Send": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyślij"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

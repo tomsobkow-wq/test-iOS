@@ -1,0 +1,39 @@
+# Generate the Xcode project with: xcodegen generate
+# Separate from PetConsumptionTracker: own project, own bundle ID, own folder.
+name: BolekLolek
+options:
+  bundleIdPrefix: com.boleklolek
+  deploymentTarget:
+    iOS: "18.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "1"
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+packages:
+  AgentCore:
+    path: Packages/AgentCore
+targets:
+  BolekLolek:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+    info:
+      path: Support/Info.plist
+      properties:
+        CFBundleDisplayName: Bolek & Lolek
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, pl]
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boleklolek.app
+    dependencies:
+      - package: AgentCore
