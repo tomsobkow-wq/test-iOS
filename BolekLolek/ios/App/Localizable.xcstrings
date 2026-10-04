@@ -170,6 +170,106 @@
           }
         }
       }
+    },
+    "Files": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pliki"
+          }
+        }
+      }
+    },
+    "Photos": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zdjęcia"
+          }
+        }
+      }
+    },
+    "Add a document or statement": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dodaj dokument lub wyciąg"
+          }
+        }
+      }
+    },
+    "Added file: %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dodano plik: %@"
+          }
+        }
+      }
+    },
+    "Reading your file…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czytam plik…"
+          }
+        }
+      }
+    },
+    "Summarising the document…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Streszczam dokument…"
+          }
+        }
+      }
+    },
+    "Ask me anything about it, for example “how much did I spend on food?”.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapytaj mnie o cokolwiek, na przykład „ile wydałem na jedzenie?”."
+          }
+        }
+      }
+    },
+    "Ask me anything about it.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapytaj mnie o cokolwiek na jego temat."
+          }
+        }
+      }
+    },
+    "I saved the document. When my brain has finished downloading I can summarise it and answer questions about it.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapisałem dokument. Gdy skończę pobierać swój „mózg”, streszczę go i odpowiem na pytania."
+          }
+        }
+      }
+    },
+    "I could not open that file.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie mogłem otworzyć tego pliku."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

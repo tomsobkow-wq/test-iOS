@@ -20,6 +20,8 @@ packages:
     path: Packages/AgentCore
   LolekRuntime:
     path: Packages/LolekRuntime
+  DocumentKit:
+    path: Packages/DocumentKit
 targets:
   BolekLolek:
     type: application
@@ -45,3 +47,4 @@ targets:
     dependencies:
       - package: AgentCore
       - package: LolekRuntime
+      - package: DocumentKit

@@ -1,5 +1,7 @@
 import AgentCore
+import PhotosUI
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// A plain text-message thread. Anything that needs the user's say-so shows up
 /// as a question with reply buttons under it, never as a separate screen.
@@ -22,7 +24,14 @@ struct ChatView: View {
                         ForEach(viewModel.visibleMessages) { message in
                             Bubble(text: Text(verbatim: message.text), isMine: message.role == .user, accent: viewModel.mode.accent)
                         }
-                        if viewModel.isWorking, viewModel.approvals.pending == nil {
+                        if let status = viewModel.importStatus {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                Text(verbatim: status).font(.system(size: 15)).foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 15).padding(.vertical, 10)
+                            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 19))
+                        } else if viewModel.isWorking, viewModel.approvals.pending == nil {
                             if viewModel.streamingText.isEmpty {
                                 TypingBubble()
                             } else {
@@ -142,31 +151,62 @@ enum ApprovalText {
 
 struct Composer: View {
     @Bindable var viewModel: ChatViewModel
+    @State private var showFiles = false
+    @State private var photo: PhotosPickerItem?
+
+    private static let fileTypes: [UTType] = [.pdf, .commaSeparatedText, .tabSeparatedText, .plainText, .image, UTType(filenameExtension: "csv")].compactMap { $0 }
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            TextField("Message", text: $viewModel.draft, axis: .vertical)
-                .lineLimit(1...5)
-                .font(.system(size: 16))
-                .padding(.leading, 16)
-                .padding(.vertical, 9)
-                .submitLabel(.send)
-                .onSubmit(viewModel.send)
-            Button(action: viewModel.send) {
-                Image(systemName: "arrow.up")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 32, height: 32)
-                    .background(viewModel.canSend ? Color.accentColor : Color(.systemGray3), in: Circle())
+            if viewModel.documents != nil {
+                Menu {
+                    Button { showFiles = true } label: { Label("Files", systemImage: "folder") }
+                    PhotosPicker(selection: $photo, matching: .images) { Label("Photos", systemImage: "photo") }
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 36, height: 36)
+                        .background(Color(.secondarySystemBackground), in: Circle())
+                }
+                .padding(.bottom, 3)
+                .accessibilityLabel(Text("Add a document or statement"))
+                .disabled(viewModel.isWorking)
             }
-            .padding(4)
-            .disabled(!viewModel.canSend)
-            .accessibilityLabel(Text("Send"))
+            HStack(alignment: .bottom, spacing: 8) {
+                TextField("Message", text: $viewModel.draft, axis: .vertical)
+                    .lineLimit(1...5)
+                    .font(.system(size: 16))
+                    .padding(.leading, 16)
+                    .padding(.vertical, 9)
+                    .submitLabel(.send)
+                    .onSubmit(viewModel.send)
+                Button(action: viewModel.send) {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 32, height: 32)
+                        .background(viewModel.canSend ? Color.accentColor : Color(.systemGray3), in: Circle())
+                }
+                .padding(4)
+                .disabled(!viewModel.canSend)
+                .accessibilityLabel(Text("Send"))
+            }
+            .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(Color(.systemGray4), lineWidth: 1))
         }
-        .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(Color(.systemGray4), lineWidth: 1))
         .padding(.horizontal, 14)
         .padding(.top, 8)
         .padding(.bottom, 8)
+        .fileImporter(isPresented: $showFiles, allowedContentTypes: Self.fileTypes) { result in
+            if case let .success(url) = result { viewModel.importFile(at: url) }
+        }
+        .onChange(of: photo) {
+            guard let item = photo else { return }
+            photo = nil
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self) { viewModel.importDocument(data: data, name: "photo.jpg") }
+            }
+        }
     }
 }
 

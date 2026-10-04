@@ -1,5 +1,6 @@
 import AgentCore
 import AppIntents
+import DocumentKit
 import Foundation
 
 /// The one set of services shared by the chat and by App Intents, so a payment
@@ -8,6 +9,12 @@ enum AppServices {
     static let spending: SpendingStore = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return SpendingStore(fileURL: base.appendingPathComponent("BolekLolek/spending.json"))
+    }()
+
+    /// Documents and bank statements the user added. On this phone only; never sent anywhere.
+    static let documents: DocumentStore = {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return DocumentStore(fileURL: base.appendingPathComponent("BolekLolek/documents.json"))
     }()
 
     static let device = DeviceServices(

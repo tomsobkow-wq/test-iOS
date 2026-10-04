@@ -1,4 +1,5 @@
 import AgentCore
+import DocumentKit
 import LolekRuntime
 import Observation
 import UIKit
@@ -18,7 +19,14 @@ final class AppModel {
         lolek = ChatViewModel(
             mode: .lolek,
             provider: lolekProvider,
-            registry: Self.makeRegistry()
+            registry: Self.makeRegistry(),
+            documents: DocumentSupport(
+                store: AppServices.documents,
+                summarize: { [lolekProvider] chunks, language in
+                    try await DocumentSummarizer(generate: lolekProvider.documentGenerator(language: language)).summarize(chunks: chunks, language: language)
+                },
+                modelReady: { [setup = lolekSetup] in setup.isReady }
+            )
         )
         bolek = ChatViewModel(
             mode: .bolek,
@@ -44,7 +52,7 @@ final class AppModel {
     }
 
     private static func makeRegistry() -> ToolRegistry {
-        ToolRegistry([AddNoteTool(store: NoteStore())] + DeviceToolbox.tools(services: AppServices.device))
+        ToolRegistry([AddNoteTool(store: NoteStore())] + DeviceToolbox.tools(services: AppServices.device) + DocumentToolbox.tools(store: AppServices.documents))
     }
 }
 

@@ -49,6 +49,12 @@ public actor AgentSession {
         self.language = language
     }
 
+    /// Adds a message that did not come from the model (a document the user attached, its summary), so the
+    /// conversation and the model's context stay in step with what is on screen.
+    public func append(_ message: ChatMessage) {
+        transcript.append(message)
+    }
+
     /// Reads the fixed prompt (instructions and tool list) ahead of time so the first message is quick.
     public func warmUp() async {
         let request = ModelRequest(
