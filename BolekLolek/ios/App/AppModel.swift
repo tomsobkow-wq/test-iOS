@@ -14,6 +14,7 @@ final class AppModel {
     let network = NetworkStatus()
     let handoff = HandoffCenter()
     private let lolekProvider = LlamaCppProvider()
+    private var connecting = false
 
     init() {
         // Each mode has its own chat and approvals. Device tools and the spending
@@ -69,6 +70,24 @@ final class AppModel {
         handoff.clear()
         mode = .bolek
         bolek.sendText(request)
+    }
+
+    /// Reaches the Bolek server (if one is set up): learns its tools and shows any alerts it stored while the app was closed.
+    /// Safe to call often; with no server, or when it is unreachable, Bolek simply has no flight tools.
+    func connectBackend() {
+        guard !connecting, let config = BackendSettings.current() else { return }
+        connecting = true
+        let client = BackendClient(config: config)
+        Task { [bolek] in
+            defer { connecting = false }
+            let tools = await RemoteTool.discover(client: client)
+            bolek.register(tools: tools)
+            guard !tools.isEmpty, let alerts = try? await client.alerts(since: BackendSettings.lastSeenAlertID),
+                  let newest = alerts.map(\.id).max() else { return }
+            for alert in alerts { bolek.receive(notice: alert.message) }
+            BackendSettings.lastSeenAlertID = newest
+            try? await client.markAlertsSeen(upTo: newest)
+        }
     }
 
     private static func makeRegistry(extra: [any Tool] = []) -> ToolRegistry {

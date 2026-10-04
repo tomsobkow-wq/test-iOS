@@ -52,6 +52,18 @@ final class ChatViewModel {
         )
     }
 
+    func register(tools: [any Tool]) {
+        Task { await session.register(tools) }
+    }
+
+    /// Something Bolek found while the app was closed, such as a fare drop. Shown as Bolek's own message.
+    func receive(notice: String) {
+        Task {
+            await session.append(ChatMessage(role: .assistant, text: notice))
+            messages = await session.transcript
+        }
+    }
+
     var visibleMessages: [ChatMessage] {
         messages.filter { message in
             switch message.role {

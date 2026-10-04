@@ -25,7 +25,7 @@ public actor AgentSession {
     public private(set) var language: ConversationLanguage
 
     private let provider: any ModelProvider
-    private let registry: ToolRegistry
+    private var registry: ToolRegistry
     private let approvalHandler: any ApprovalHandler
     private let policy = ApprovalPolicy()
     private let verifier: (any AnswerVerifier)?
@@ -56,6 +56,11 @@ public actor AgentSession {
 
     /// Adds a message that did not come from the model (a document the user attached, its summary), so the
     /// conversation and the model's context stay in step with what is on screen.
+    /// Adds tools that were not known at start (the server's, once the app has reached it).
+    public func register(_ tools: [any Tool]) {
+        registry = registry.adding(tools)
+    }
+
     public func append(_ message: ChatMessage) {
         transcript.append(message)
     }

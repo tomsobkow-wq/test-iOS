@@ -261,3 +261,16 @@ Output: a scorecard per model. Lolek's default model is the winner.
   licensed partner.
 - Kimi K3's license has conditions at scale (MaaS revenue over $20M a year;
   branding over 100M MAU). Branding is ignored for now, as agreed.
+
+## Bolek backend (flights and price watches)
+
+`backend/` is a small zero-dependency Node server. The agent loop stays on the phone; the server only runs Bolek's remote tools
+(`search_flights`, `watch_flight_price`, `list_flight_watches`, `stop_flight_watch`) and stores alerts when a watched fare drops.
+
+- **Phone side:** `AgentCore/Tools/RemoteTools.swift` (`BackendClient`, `RemoteTool`). On every foreground the app fetches `/v1/tools`, registers them for Bolek only
+  (tier `.bolek`; watch tools are `writeExternal`, so the user is asked first), then pulls `/v1/alerts` and shows each as a Bolek message.
+- **No server or no key:** Bolek simply has no flight tools, or the tool says plainly that flight search is not set up. Nothing crashes, nothing is invented.
+- **Config (developer builds):** launch once with `BOLEK_BACKEND_URL` and `BOLEK_BACKEND_TOKEN`; the token goes to the Keychain.
+  The Info.plist allows local-network HTTP only (`NSAllowsLocalNetworking`); a server outside the home network needs HTTPS (Tailscale or a reverse proxy).
+- **Privacy:** route and dates reach SerpApi/Google. Lolek never uses the backend.
+- **Not verified:** a live SerpApi call (no key yet), alerts on a real phone, push notifications (alerts show when the app opens).

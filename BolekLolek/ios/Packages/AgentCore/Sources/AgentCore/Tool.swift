@@ -103,6 +103,12 @@ public struct ToolRegistry: Sendable {
         toolsByName = byName
     }
 
+    /// A copy with more tools; a tool with an existing name replaces the old one.
+    public func adding(_ more: [any Tool]) -> ToolRegistry {
+        let names = Set(more.map(\.name))
+        return ToolRegistry(toolsByName.values.filter { !names.contains($0.name) } + more)
+    }
+
     public func tools(for mode: AgentMode) -> [any Tool] {
         toolsByName.values
             .filter { mode.allows($0.tier) }

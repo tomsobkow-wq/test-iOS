@@ -39,6 +39,9 @@ targets:
         NSCalendarsFullAccessUsageDescription: To read your calendar and add events when you ask.
         NSContactsUsageDescription: To find phone numbers when you ask to text or call someone.
         NSLocationWhenInUseUsageDescription: To tell you the weather where you are.
+        NSLocalNetworkUsageDescription: To reach your own Bolek server on your home network.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     entitlements:
       path: Support/BolekLolek.entitlements
     settings:

@@ -42,6 +42,7 @@ extension AgentMode {
 
 struct RootView: View {
     @Bindable var model: AppModel
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         VStack(spacing: 0) {
@@ -52,6 +53,9 @@ struct RootView: View {
         }
         .tint(model.mode.accent)
         .animation(.easeInOut(duration: 0.25), value: model.mode)
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            if phase == .active { model.connectBackend() }
+        }
     }
 }
 
