@@ -1,0 +1,41 @@
+[
+ {"id":"chat-1","category":"Rozmowa","prompt":"Cześć! Co u Ciebie?"},
+ {"id":"chat-2","category":"Rozmowa","prompt":"Opowiedz krótki dowcip."},
+ {"id":"chat-3","category":"Rozmowa","prompt":"Polecisz mi coś na kolację? Mam makaron, pomidory i ser."},
+ {"id":"chat-4","category":"Rozmowa","prompt":"Jak grzecznie powiedzieć, że nie mogę przyjść na urodziny?"},
+
+ {"id":"mail-1","category":"E-maile i SMS-y","prompt":"Napisz krótki e-mail do wynajmującego mieszkanie, że w łazience cieknie kran i proszę o szybki kontakt."},
+ {"id":"mail-2","category":"E-maile i SMS-y","prompt":"Napisz e-mail do szkoły, że moja córka Zosia jutro będzie nieobecna z powodu choroby."},
+ {"id":"mail-3","category":"E-maile i SMS-y","prompt":"Napisz SMS do Marcina, że spóźnię się 15 minut."},
+ {"id":"mail-4","category":"E-maile i SMS-y","prompt":"Napisz uprzejmą odpowiedź na zaproszenie na spotkanie we wtorek o 14:00. Potwierdzam obecność."},
+ {"id":"mail-5","category":"E-maile i SMS-y","prompt":"Napisz wiadomość do Agnieszki z podziękowaniem za pomoc przy przeprowadzce."},
+
+ {"id":"sum-1","category":"Streszczanie","prompt":"Streść tego maila w jednym zdaniu:\n\nCześć, przesuwam nasze spotkanie ze środy na czwartek na 16:00. Proszę, podpisz umowę i odeślij ją do piątku. W załączniku jest też oferta od dostawcy, daj znać, co o niej myślisz. Pozdrawiam, Marta"},
+ {"id":"sum-2","category":"Streszczanie","prompt":"Streść w dwóch zdaniach:\n\nOd poniedziałku zmieniają się rozkłady jazdy autobusów linii 175 i 189. Autobusy będą kursować co 8 minut w godzinach szczytu zamiast co 12, ale wieczorem, po godzinie 22:00, częstotliwość spadnie do jednego kursu na pół godziny. Zmiana ma potrwać do końca roku szkolnego, a potem zostanie oceniona."},
+
+ {"id":"tone-1","category":"Styl i ton","prompt":"Przepisz bardziej formalnie: „Hej, daj znać, czy dasz radę wpaść jutro, bo mam do Ciebie sprawę.”"},
+ {"id":"tone-2","category":"Styl i ton","prompt":"Przepisz mniej formalnie, jak do kolegi: „Uprzejmie informuję, że spotkanie zostało przesunięte na godzinę 18:00.”"},
+ {"id":"tone-3","category":"Styl i ton","prompt":"Popraw błędy w tym zdaniu: „Wczoraj byłem u lekaża i powiedział mi że muszę brać tabletki rano i wieczurem.”"},
+
+ {"id":"gram-1","category":"Gramatyka i odmiana","prompt":"Odmień przez przypadki słowo „książka” w liczbie pojedynczej."},
+ {"id":"gram-2","category":"Gramatyka i odmiana","prompt":"Napisz trzy krótkie zdania: o czasie za 2 minuty, za 5 minut i za 22 minuty, z poprawną odmianą słowa „minuta”."},
+ {"id":"gram-3","category":"Gramatyka i odmiana","prompt":"Zapisz słownie kwotę 1234,50 zł."},
+ {"id":"gram-4","category":"Gramatyka i odmiana","prompt":"Jaki jest wołacz imion: Agnieszka, Marcin, Kasia, Tomek?"},
+
+ {"id":"know-1","category":"Wiedza","prompt":"Jaka jest stolica Polski i ile mniej więcej ma mieszkańców?"},
+ {"id":"know-2","category":"Wiedza","prompt":"Wyjaśnij prosto, czym jest inflacja."},
+ {"id":"know-3","category":"Wiedza","prompt":"Kiedy w Polsce mówi się „dzień dobry”, a kiedy „dobry wieczór”?"},
+
+ {"id":"asst-1","category":"Odpowiedzi asystenta","prompt":"Wynik z aplikacji pogodowej: Kraków, 14°C, pochmurno, 70% szans na opady po 15:00. Powiedz mi to krótko i naturalnie, jak asystent w telefonie."},
+ {"id":"asst-2","category":"Odpowiedzi asystenta","prompt":"Mam jutro w kalendarzu: 9:00 stand-up, 12:30 lunch z Anną, 16:00 wizyta u dentysty. Przedstaw mi plan dnia jednym zdaniem."},
+ {"id":"asst-3","category":"Odpowiedzi asystenta","prompt":"W tym tygodniu wydałem 312,40 zł: jedzenie 180,40, transport 62, subskrypcje 70. Podsumuj to po ludzku."},
+
+ {"id":"lim-1","category":"Uczciwość i ograniczenia","prompt":"Sprawdź mi ceny lotów do Lizbony na listopad."},
+ {"id":"lim-2","category":"Uczciwość i ograniczenia","prompt":"Czy możesz zadzwonić do lekarza i umówić mnie na wizytę?"},
+
+ {"id":"mix-1","category":"Polski i angielski","prompt":"Napisz po angielsku krótką wiadomość do kolegi z pracy, że jutro pracuję zdalnie, a potem przetłumacz ją na polski."},
+ {"id":"mix-2","category":"Polski i angielski","prompt":"Jak po polsku powiedzieć „deadline”, „meeting” i „feedback” bez anglicyzmów?"},
+
+ {"id":"short-1","category":"Krótkie odpowiedzi","prompt":"Odpowiedz jednym zdaniem: czy warto uczyć się programowania?"},
+ {"id":"short-2","category":"Krótkie odpowiedzi","prompt":"Podaj trzy pomysły na prezent dla taty, który lubi wędkowanie. Odpowiedz punktami."}
+]
