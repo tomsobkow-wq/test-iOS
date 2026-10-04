@@ -1,164 +1,22 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "%lld actions in this chat": {
-      "localizations": {
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld action in this chat"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld actions in this chat"
-                }
-              }
-            }
-          }
-        },
-        "pl": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld akcja w tym czacie"
-                }
-              },
-              "few": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld akcje w tym czacie"
-                }
-              },
-              "many": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld akcji w tym czacie"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld akcji w tym czacie"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "Action completed": {
+    "Allow": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Akcja wykonana"
+            "value": "Zezwól"
           }
         }
       }
     },
-    "Action not completed": {
+    "Not now": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Akcja niewykonana"
-          }
-        }
-      }
-    },
-    "Allow once": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zezwól jednorazowo"
-          }
-        }
-      }
-    },
-    "Always allow": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zawsze zezwalaj"
-          }
-        }
-      }
-    },
-    "Approval needed": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wymagana zgoda"
-          }
-        }
-      }
-    },
-    "Bolek": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bolek"
-          }
-        }
-      }
-    },
-    "Deny": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Odmów"
-          }
-        }
-      }
-    },
-    "Full agent · EU cloud": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pełny agent · chmura w UE"
-          }
-        }
-      }
-    },
-    "Hi, I'm Bolek. I can act for you on the web and in your apps. This is a demo model for now. Try: “send: hello to Anna”.": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cześć, jestem Bolek. Mogę działać za Ciebie w internecie i w Twoich aplikacjach. Na razie to model demonstracyjny. Spróbuj: „wyślij: cześć do Anny”."
-          }
-        }
-      }
-    },
-    "Hi, I'm Lolek. I run only on this iPhone and never talk to any server. Try: “note: buy milk”.": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cześć, jestem Lolek. Działam tylko na tym iPhonie i nie łączę się z żadnym serwerem. Spróbuj: „notatka: kupić mleko”."
-          }
-        }
-      }
-    },
-    "Lolek": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lolek"
+            "value": "Nie teraz"
           }
         }
       }
@@ -173,22 +31,72 @@
         }
       }
     },
-    "Private · on this iPhone": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Prywatny · na tym iPhonie"
-          }
-        }
-      }
-    },
     "Send": {
       "localizations": {
         "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "Wyślij"
+          }
+        }
+      }
+    },
+    "Lolek": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lolek"
+          }
+        }
+      }
+    },
+    "Bolek": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bolek"
+          }
+        }
+      }
+    },
+    "Private · runs on this iPhone": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prywatny · działa na tym iPhonie"
+          }
+        }
+      }
+    },
+    "Full agent · EU cloud": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pełny agent · chmura w UE"
+          }
+        }
+      }
+    },
+    "Hi, I'm Lolek. I run only on this iPhone and never talk to any server. Try “weather”, “alarm: 06:30” or “note: buy milk”.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cześć, jestem Lolek. Działam tylko na tym iPhonie i nie łączę się z żadnym serwerem. Spróbuj: „pogoda”, „budzik: 06:30” lub „notatka: kupić mleko”."
+          }
+        }
+      }
+    },
+    "Hi, I'm Bolek. I can act for you on the web and in your apps. This is a demo model for now. Try “weather”, “spending: this_week” or “call: Anna”.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cześć, jestem Bolek. Mogę działać za Ciebie w internecie i w Twoich aplikacjach. Na razie to model demonstracyjny. Spróbuj: „pogoda”, „wydatki: this_week” lub „zadzwoń: Anna”."
           }
         }
       }

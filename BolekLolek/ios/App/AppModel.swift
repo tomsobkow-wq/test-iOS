@@ -9,7 +9,8 @@ final class AppModel {
     let bolek: ChatViewModel
 
     init() {
-        // Each mode gets its own tools and stores: Lolek and Bolek share nothing by default.
+        // Each mode has its own chat and approvals. Device tools and the spending
+        // log are the iPhone's own, so both assistants see the same ones.
         lolek = ChatViewModel(
             mode: .lolek,
             provider: DemoModelProvider(profile: ModelCatalog.lolekDefault),
@@ -30,6 +31,6 @@ final class AppModel {
     }
 
     private static func makeRegistry() -> ToolRegistry {
-        ToolRegistry([AddNoteTool(store: NoteStore()), DemoSendMessageTool()])
+        ToolRegistry([AddNoteTool(store: NoteStore())] + DeviceToolbox.tools(services: AppServices.device))
     }
 }

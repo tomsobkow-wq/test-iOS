@@ -303,3 +303,65 @@ final class SystemPromptClockTests: XCTestCase {
         XCTAssertTrue(text.contains("Monday 2026-10-05 09:41 (Europe/Warsaw)"), text)
     }
 }
+
+private struct AllowAll: ApprovalHandler {
+    func decide(_ request: ApprovalRequest) async -> ApprovalDecision { .allowOnce }
+}
+
+final class AgentLoopWithDeviceToolsTests: XCTestCase {
+    private func session(_ services: FakeServices, store: SpendingStore) -> AgentSession {
+        let tools = DeviceToolbox.tools(
+            services: DeviceServices(weather: services, calendar: services, contacts: services, notifications: services, urlOpener: services, spending: store),
+            clock: clock
+        )
+        return AgentSession(
+            mode: .lolek,
+            provider: DemoModelProvider(profile: .bielikV3_4_5B),
+            registry: ToolRegistry(tools),
+            approvalHandler: AllowAll(),
+            language: .en
+        )
+    }
+
+    func testTypedCommandsReachRealTools() async throws {
+        var services = FakeServices()
+        services.contactList = [ContactInfo(name: "Anna Nowak", phoneNumbers: ["+48 500 600 700"])]
+        let store = SpendingStore(fileURL: nil)
+        let session = session(services, store: store)
+
+        var added = try await session.send("weather: Kraków")
+        XCTAssertTrue(added.last?.text.contains("Kraków") == true)
+
+        added = try await session.send("spent: 12,50 Lidl")
+        XCTAssertTrue(added.last?.text.contains("12.50 PLN") == true, added.last?.text ?? "")
+
+        added = try await session.send("spending: today")
+        XCTAssertTrue(added.last?.text.contains("12.50 PLN") == true, added.last?.text ?? "")
+
+        added = try await session.send("text: Anna: running late")
+        XCTAssertTrue(added.last?.text.contains("Anna Nowak") == true, added.last?.text ?? "")
+        let url = await services.recorder.openedURLs.first
+        XCTAssertEqual(url?.absoluteString, "sms:+48500600700?body=running%20late")
+
+        added = try await session.send("alarm: 06:30")
+        XCTAssertTrue(added.last?.text.contains("06:30") == true)
+        let scheduled = await services.recorder.notifications
+        XCTAssertEqual(scheduled.count, 1)
+    }
+
+    func testSendTextAsksApprovalBeforeOpeningMessages() async throws {
+        struct DenyAll: ApprovalHandler {
+            func decide(_ request: ApprovalRequest) async -> ApprovalDecision { .deny }
+        }
+        var services = FakeServices()
+        services.contactList = [ContactInfo(name: "Anna Nowak", phoneNumbers: ["+48500600700"])]
+        let tools = DeviceToolbox.tools(
+            services: DeviceServices(weather: services, calendar: services, contacts: services, notifications: services, urlOpener: services, spending: SpendingStore(fileURL: nil)),
+            clock: clock
+        )
+        let session = AgentSession(mode: .lolek, provider: DemoModelProvider(profile: .bielikV3_4_5B), registry: ToolRegistry(tools), approvalHandler: DenyAll(), language: .en)
+        _ = try await session.send("text: Anna: hi")
+        let opened = await services.recorder.openedURLs
+        XCTAssertTrue(opened.isEmpty, "Denied, so Messages must not open")
+    }
+}
