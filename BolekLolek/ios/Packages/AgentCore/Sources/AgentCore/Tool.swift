@@ -17,11 +17,13 @@ public enum ToolRisk: String, Codable, Sendable {
     case send
     /// Spends money.
     case spend
+    /// Deletes the user's data. Local, but cannot be undone.
+    case destructive
 
     public var needsApproval: Bool {
         switch self {
         case .read, .writeLocal: false
-        case .writeExternal, .send, .spend: true
+        case .writeExternal, .send, .spend, .destructive: true
         }
     }
 }

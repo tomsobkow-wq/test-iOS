@@ -1,10 +1,30 @@
 import Foundation
 
 enum SystemPrompt {
-    static func text(for mode: AgentMode, language: ConversationLanguage) -> String {
+    static func text(
+        for mode: AgentMode,
+        language: ConversationLanguage,
+        now: Date = Date(),
+        timeZone: TimeZone = .current
+    ) -> String {
+        let base: String
         switch mode {
-        case .lolek: lolek.text(for: language)
-        case .bolek: bolek.text(for: language)
+        case .lolek: base = lolek.text(for: language)
+        case .bolek: base = bolek.text(for: language)
+        }
+        return base + "\n\n" + clockLine(now: now, timeZone: timeZone, language: language)
+    }
+
+    /// The model cannot know today's date; without this "tomorrow at 6:30" is unusable.
+    static func clockLine(now: Date, timeZone: TimeZone, language: ConversationLanguage) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "EEEE yyyy-MM-dd HH:mm"
+        let stamp = "\(formatter.string(from: now)) (\(timeZone.identifier))"
+        switch language {
+        case .en: return "Current date and time: \(stamp). Weeks start on Monday. Use ISO 8601 local times in tool arguments."
+        case .pl: return "Aktualna data i godzina: \(stamp). Tydzień zaczyna się w poniedziałek. W argumentach narzędzi używaj lokalnego czasu ISO 8601."
         }
     }
 
