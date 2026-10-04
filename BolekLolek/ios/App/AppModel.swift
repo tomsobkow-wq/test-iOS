@@ -26,7 +26,8 @@ final class AppModel {
                     try await DocumentSummarizer(generate: lolekProvider.documentGenerator(language: language)).summarize(chunks: chunks, language: language)
                 },
                 modelReady: { [setup = lolekSetup] in setup.isReady }
-            )
+            ),
+            fixedPromptLanguage: .en
         )
         bolek = ChatViewModel(
             mode: .bolek,
@@ -38,7 +39,9 @@ final class AppModel {
         // (about 3 GB) if iOS asks for memory back.
         let host = lolekProvider.engineHost
         lolekSetup.onReady = { [weak lolek] in Task { @MainActor in lolek?.warmUp() } }
-        if lolekSetup.isReady { lolekSetup.onReady?() }
+        // Under XCTest the tests load their own copy of the model; two would not fit in memory.
+        let underTest = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        if lolekSetup.isReady, !underTest { lolekSetup.onReady?() }
         NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification, object: nil, queue: nil) { _ in
             Task { await host.unload() }
         }

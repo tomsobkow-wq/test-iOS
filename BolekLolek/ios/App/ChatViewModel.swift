@@ -27,7 +27,7 @@ final class ChatViewModel {
 
     private let session: AgentSession
 
-    init(mode: AgentMode, provider: any ModelProvider, registry: ToolRegistry, documents: DocumentSupport? = nil) {
+    init(mode: AgentMode, provider: any ModelProvider, registry: ToolRegistry, documents: DocumentSupport? = nil, fixedPromptLanguage: ConversationLanguage? = nil) {
         self.documents = documents
         let approvals = ApprovalCenter()
         self.mode = mode
@@ -39,7 +39,8 @@ final class ChatViewModel {
             approvalHandler: ApprovalCenterHandler(center: approvals),
             // With documents: pick the obvious query tool ourselves and check every figure the model writes.
             verifier: documents.map { _ in GroundingVerifier() },
-            planner: documents.map { DocumentPlanner(store: $0.store) }
+            planner: documents.map { DocumentPlanner(store: $0.store) },
+            fixedPromptLanguage: fixedPromptLanguage
         )
     }
 

@@ -30,6 +30,9 @@ public actor AgentSession {
     private let policy = ApprovalPolicy()
     private let verifier: (any AnswerVerifier)?
     private let planner: (any TurnPlanner)?
+    /// When set, the system prompt and tool descriptions are always in this language, whatever the user writes in. On-device
+    /// models cache that part of the prompt, and a prompt that changes with the language would be re-read on every switch.
+    private let fixedPromptLanguage: ConversationLanguage?
 
     public init(
         mode: AgentMode,
@@ -38,8 +41,10 @@ public actor AgentSession {
         approvalHandler: any ApprovalHandler,
         language: ConversationLanguage = .fromLocale(),
         verifier: (any AnswerVerifier)? = nil,
-        planner: (any TurnPlanner)? = nil
+        planner: (any TurnPlanner)? = nil,
+        fixedPromptLanguage: ConversationLanguage? = nil
     ) {
+        self.fixedPromptLanguage = fixedPromptLanguage
         self.verifier = verifier
         self.planner = planner
         self.mode = mode
@@ -59,9 +64,9 @@ public actor AgentSession {
     public func warmUp() async {
         let request = ModelRequest(
             mode: mode,
-            systemPrompt: SystemPrompt.text(for: mode, language: language),
+            systemPrompt: systemPrompt(),
             messages: [],
-            tools: await availableTools().map { $0.spec(in: language) },
+            tools: await availableTools().map { $0.spec(in: promptLanguage) },
             language: language
         )
         await provider.warmUp(for: request)
@@ -73,7 +78,7 @@ public actor AgentSession {
         let start = transcript.count
         language = ConversationLanguage.detect(text, fallback: language)
         transcript.append(ChatMessage(role: .user, text: text))
-        let specs = await availableTools().map { $0.spec(in: language) }
+        let specs = await availableTools().map { $0.spec(in: promptLanguage) }
 
         // Run the obvious tool calls first, so the model only has to phrase the result.
         if let planner {
@@ -91,7 +96,7 @@ public actor AgentSession {
         for _ in 0..<mode.maxSteps {
             let request = ModelRequest(
                 mode: mode,
-                systemPrompt: SystemPrompt.text(for: mode, language: language),
+                systemPrompt: systemPrompt(),
                 messages: transcript,
                 tools: specs,
                 language: language
@@ -142,6 +147,12 @@ public actor AgentSession {
         let second = try await provider.respond(to: retry)
         if verifier.review(answer: second.text, toolNames: toolNames, toolResults: toolResults, userText: userText, language: language) == nil { return second }
         return ModelResponse(text: second.text + "\n\n" + verifier.caution(language: language), toolCalls: [], providerState: second.providerState)
+    }
+
+    private var promptLanguage: ConversationLanguage { fixedPromptLanguage ?? language }
+
+    private func systemPrompt() -> String {
+        SystemPrompt.text(for: mode, language: promptLanguage, includeReplyLine: fixedPromptLanguage == nil)
     }
 
     private func availableTools() async -> [any Tool] {

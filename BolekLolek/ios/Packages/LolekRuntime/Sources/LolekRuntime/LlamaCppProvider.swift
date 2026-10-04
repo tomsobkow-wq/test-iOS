@@ -45,8 +45,11 @@ public struct LlamaCppProvider: ModelProvider {
     private let model: LocalModel
     private let host: LolekEngineHost
     private let renderer: PromptRenderer
+    /// Called after every model call with its timings. For measuring on a real phone.
+    private let statsHandler: (@Sendable (GenerationStats) -> Void)?
 
-    public init(model: LocalModel = LocalModels.default, store: ModelStore = ModelStore(), settings: EngineSettings = EngineSettings()) {
+    public init(model: LocalModel = LocalModels.default, store: ModelStore = ModelStore(), settings: EngineSettings = EngineSettings(), statsHandler: (@Sendable (GenerationStats) -> Void)? = nil) {
+        self.statsHandler = statsHandler
         self.model = model
         self.profile = model.profile
         self.host = LolekEngineHost(model: model, store: store, settings: settings)
@@ -74,7 +77,7 @@ public struct LlamaCppProvider: ModelProvider {
         // Drop the oldest turns until the prompt fits; the current turn is never dropped.
         var messages = request.messages
         func parts() -> (header: String, body: String, generation: String) {
-            renderer.renderParts(system: request.systemPrompt, messages: messages, tools: request.tools, timeZone: request.includeClock ? request.timeZone : nil)
+            renderer.renderParts(system: request.systemPrompt, messages: messages, tools: request.tools, timeZone: request.includeClock ? request.timeZone : nil, languageTags: request.includeClock)
         }
         var prompt = parts()
         while try await engine.tokenCount(prompt.header + prompt.body + prompt.generation) > limit, let cut = Self.firstDroppableTurnEnd(in: messages) {
@@ -83,7 +86,7 @@ public struct LlamaCppProvider: ModelProvider {
         }
 
         let raw = Accumulator()
-        let (_, _) = try await engine.generate(
+        let (_, stats) = try await engine.generate(
             header: prompt.header,
             prompt: prompt.body,
             suffix: prompt.generation,
@@ -95,6 +98,7 @@ public struct LlamaCppProvider: ModelProvider {
             return !Task.isCancelled
         }
 
+        statsHandler?(stats)
         let parsed = ToolCallParser.parse(raw.value, tools: request.tools)
         return ModelResponse(text: parsed.text, toolCalls: parsed.calls)
     }

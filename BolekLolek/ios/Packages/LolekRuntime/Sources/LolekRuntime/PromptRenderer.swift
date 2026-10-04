@@ -21,8 +21,8 @@ public struct PromptRenderer: Sendable {
     /// The full prompt, ending where the assistant should start writing.
     /// `timeZone` adds a "[Monday 2026-10-05 09:41]" stamp to each user message so the model knows
     /// the date without it appearing in the (cached) system prompt. Nil leaves messages untouched.
-    public func render(system: String, messages: [ChatMessage], tools: [ToolSpec], timeZone: TimeZone? = nil) -> String {
-        let parts = renderParts(system: system, messages: messages, tools: tools, timeZone: timeZone)
+    public func render(system: String, messages: [ChatMessage], tools: [ToolSpec], timeZone: TimeZone? = nil, languageTags: Bool = false) -> String {
+        let parts = renderParts(system: system, messages: messages, tools: tools, timeZone: timeZone, languageTags: languageTags)
         return parts.header + parts.body + parts.generation
     }
 
@@ -36,15 +36,18 @@ public struct PromptRenderer: Sendable {
     /// The prompt split where the assistant's turn starts. Everything in `body` is stable between
     /// steps, so the engine can checkpoint the model's memory there and skip re-reading it next time.
     /// `header` (system text and tools) is identical in every conversation, `body` is the conversation.
-    public func renderParts(system: String, messages: [ChatMessage], tools: [ToolSpec], timeZone: TimeZone? = nil) -> (header: String, body: String, generation: String) {
+    public func renderParts(system: String, messages: [ChatMessage], tools: [ToolSpec], timeZone: TimeZone? = nil, languageTags: Bool = false) -> (header: String, body: String, generation: String) {
         let stamped = timeZone.map { zone in
             messages.map { message -> ChatMessage in
                 guard message.role == .user else { return message }
-                return ChatMessage(
-                    id: message.id, role: .user,
-                    text: "[\(PromptClock.stamp(message.createdAt, timeZone: zone))] " + message.text,
-                    createdAt: message.createdAt
-                )
+                var tag = PromptClock.stamp(message.createdAt, timeZone: zone)
+                // Which language to answer in, decided from the message itself so it never changes between turns.
+                // Clear cases only: a toss-up gets no tag and the model follows the text.
+                if languageTags {
+                    let guessEN = ConversationLanguage.detect(message.text, fallback: .en), guessPL = ConversationLanguage.detect(message.text, fallback: .pl)
+                    if guessEN == guessPL { tag += guessEN == .pl ? " · reply in Polish" : " · reply in English" }
+                }
+                return ChatMessage(id: message.id, role: .user, text: "[\(tag)] " + message.text, createdAt: message.createdAt)
             }
         } ?? messages
         let header = renderHeader(system: system, tools: tools)

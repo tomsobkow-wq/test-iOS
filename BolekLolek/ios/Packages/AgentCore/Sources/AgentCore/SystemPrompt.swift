@@ -3,13 +3,13 @@ import Foundation
 enum SystemPrompt {
     /// Stable text: it never contains the date, so on-device providers can keep it cached.
     /// The clock travels separately (`ModelRequest.now`, see `PromptClock`).
-    static func text(for mode: AgentMode, language: ConversationLanguage) -> String {
+    static func text(for mode: AgentMode, language: ConversationLanguage, includeReplyLine: Bool = true) -> String {
         let base: String
         switch mode {
         case .lolek: base = lolek.text(for: language)
         case .bolek: base = bolek.text(for: language)
         }
-        return base + "\n" + replyLanguageLine(language)
+        return includeReplyLine ? base + "\n" + replyLanguageLine(language) : base
     }
 
     /// The app already detects the language of the user's message. Saying so outright

@@ -64,9 +64,13 @@ public final class LlamaEngine: @unchecked Sendable {
     private struct Checkpoint {
         let tokens: [Int32]
         let state: [UInt8]
+        /// The fixed header (instructions and tools) is shared by every conversation, so it is kept for good.
+        /// Conversation snapshots are rotated.
+        let pinned: Bool
     }
     private var checkpoints: [Checkpoint] = []
-    private static let maxCheckpoints = 3
+    private static let maxConversationCheckpoints = 2
+    private static let maxPinnedCheckpoints = 2
     private var needsCheckpoints = false
 
     private static let backendReady: Void = {
@@ -196,14 +200,19 @@ public final class LlamaEngine: @unchecked Sendable {
         }
     }
 
-    private func saveCheckpoint(upTo tokens: [Int32], stats: inout GenerationStats) {
+    private func saveCheckpoint(upTo tokens: [Int32], pinned: Bool, stats: inout GenerationStats) {
         let size = llama_state_seq_get_size(context, 0)
         guard size > 0 else { return }
         var state = [UInt8](repeating: 0, count: size)
         guard llama_state_seq_get_data(context, &state, size, 0) == size else { return }
         checkpoints.removeAll { $0.tokens == tokens }
-        checkpoints.append(Checkpoint(tokens: tokens, state: state))
-        if checkpoints.count > Self.maxCheckpoints { checkpoints.removeFirst() }
+        checkpoints.append(Checkpoint(tokens: tokens, state: state, pinned: pinned))
+        // Rotate the oldest of each kind; the header snapshot never falls out because of conversation traffic.
+        for (isPinned, limit) in [(true, Self.maxPinnedCheckpoints), (false, Self.maxConversationCheckpoints)] {
+            while checkpoints.filter({ $0.pinned == isPinned }).count > limit, let oldest = checkpoints.firstIndex(where: { $0.pinned == isPinned }) {
+                checkpoints.remove(at: oldest)
+            }
+        }
         stats.checkpointBytes = size
     }
 
@@ -260,7 +269,7 @@ public final class LlamaEngine: @unchecked Sendable {
             var position = common
             for boundary in [headerTokens.count, bodyTokens.count] where boundary > position && boundary > 0 && (boundary < tokens.count || suffix.isEmpty) {
                 try decode(tokens[position..<boundary], memory: memory)
-                saveCheckpoint(upTo: Array(tokens[..<boundary]), stats: &stats)
+                saveCheckpoint(upTo: Array(tokens[..<boundary]), pinned: boundary == headerTokens.count && !headerTokens.isEmpty, stats: &stats)
                 position = boundary
             }
             if position < tokens.count { try decode(tokens[position...], memory: memory) }

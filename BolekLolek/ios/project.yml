@@ -48,3 +48,27 @@ targets:
       - package: AgentCore
       - package: LolekRuntime
       - package: DocumentKit
+  BolekLolekDeviceTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: DeviceTests
+    dependencies:
+      - target: BolekLolek
+      - package: AgentCore
+      - package: LolekRuntime
+      - package: DocumentKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boleklolek.devicetests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/BolekLolek.app/BolekLolek
+        BUNDLE_LOADER: $(TEST_HOST)
+schemes:
+  BolekLolek:
+    build:
+      targets:
+        BolekLolek: all
+    test:
+      targets:
+        - BolekLolekDeviceTests

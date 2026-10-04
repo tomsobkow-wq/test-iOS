@@ -69,6 +69,29 @@ final class LiveModelTests: XCTestCase {
         }
     }
 
+    func testHeaderCheckpointSurvivesManyConversations() async throws {
+        let store = try store()
+        let model = LocalModels.qwen35
+        try installed(model, in: store)
+        let engine = try await LlamaEngine(modelPath: store.path(for: model).path)
+        let renderer = PromptRenderer(style: model.promptStyle)
+        let tools = [ToolSpec(name: "get_weather", description: "Weather", parametersSchema: #"{"type":"object","properties":{"place":{"type":"string"}}}"#)]
+        let system = String(repeating: "You are Lolek. Be brief and helpful. ", count: 40)
+        var headerReuse: [Int] = []
+        for question in ["Weather?", "Alarm at 6:30", "Timer 10 min", "Call Bob", "Text Anna", "Note milk", "Calendar tomorrow"] {
+            let user = ChatMessage(role: .user, text: question)
+            let first = renderer.renderParts(system: system, messages: [user], tools: tools)
+            let a = try await engine.generate(header: first.header, prompt: first.body, suffix: first.generation, maxTokens: 12, temperature: 0) { _ in true }
+            // A tool step as well: this adds another conversation snapshot each time.
+            let call = ToolCall(name: "get_weather", argumentsJSON: "{}")
+            let second = renderer.renderParts(system: system, messages: [user, ChatMessage(role: .assistant, text: "", toolCalls: [call]), ChatMessage(role: .tool, text: "14C", toolCallID: call.id)], tools: tools)
+            _ = try await engine.generate(header: second.header, prompt: second.body, suffix: second.generation, maxTokens: 12, temperature: 0) { _ in true }
+            headerReuse.append(a.stats.reusedTokens)
+        }
+        print("header reuse per conversation: \(headerReuse)")
+        XCTAssertTrue(headerReuse.dropFirst().allSatisfy { $0 > 300 }, "the header must stay cached however many conversations come and go: \(headerReuse)")
+    }
+
     // MARK: Tool-calling mini evaluation (first slice of build step 4)
 
     private actor Calls {
@@ -144,7 +167,7 @@ final class LiveModelTests: XCTestCase {
             var lines: [String] = []
             for item in Self.cases {
                 let session = AgentSession(
-                    mode: .lolek, provider: provider, registry: ToolRegistry(tools), approvalHandler: AllowAll(), language: item.language
+                    mode: .lolek, provider: provider, registry: ToolRegistry(tools), approvalHandler: AllowAll(), language: item.language, fixedPromptLanguage: .en
                 )
                 let started = Date()
                 let added = try await session.send(item.prompt)
