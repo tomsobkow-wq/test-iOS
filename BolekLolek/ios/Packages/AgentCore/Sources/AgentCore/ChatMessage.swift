@@ -14,6 +14,9 @@ public struct ChatMessage: Identifiable, Codable, Sendable, Equatable {
     public let toolCallID: String?
     public let isError: Bool
     public let createdAt: Date
+    /// Opaque data a provider needs echoed back next turn (for example Claude's
+    /// thinking and search blocks). The UI and other providers never read it.
+    public let providerState: String?
 
     public init(
         id: UUID = UUID(),
@@ -22,7 +25,8 @@ public struct ChatMessage: Identifiable, Codable, Sendable, Equatable {
         toolCalls: [ToolCall] = [],
         toolCallID: String? = nil,
         isError: Bool = false,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        providerState: String? = nil
     ) {
         self.id = id
         self.role = role
@@ -31,5 +35,6 @@ public struct ChatMessage: Identifiable, Codable, Sendable, Equatable {
         self.toolCallID = toolCallID
         self.isError = isError
         self.createdAt = createdAt
+        self.providerState = providerState
     }
 }

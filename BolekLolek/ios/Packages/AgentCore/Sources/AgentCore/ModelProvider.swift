@@ -25,10 +25,13 @@ public struct ModelRequest: Sendable {
 public struct ModelResponse: Sendable, Equatable {
     public let text: String
     public let toolCalls: [ToolCall]
+    /// See `ChatMessage.providerState`.
+    public let providerState: String?
 
-    public init(text: String = "", toolCalls: [ToolCall] = []) {
+    public init(text: String = "", toolCalls: [ToolCall] = [], providerState: String? = nil) {
         self.text = text
         self.toolCalls = toolCalls
+        self.providerState = providerState
     }
 }
 

@@ -44,7 +44,7 @@ public actor AgentSession {
                 language: language
             )
             let response = try await provider.respond(to: request)
-            transcript.append(ChatMessage(role: .assistant, text: response.text, toolCalls: response.toolCalls))
+            transcript.append(ChatMessage(role: .assistant, text: response.text, toolCalls: response.toolCalls, providerState: response.providerState))
             if response.toolCalls.isEmpty {
                 return Array(transcript[start...])
             }
