@@ -82,6 +82,7 @@ test("the news text tells the model to cite outlets and times and not to invent"
   assert.match(text, /\[2026-10-05 07:00 UTC, 2 h ago\] Sky News: Talks proposed/);
   assert.match(text, /only from these headlines/);
   assert.match(text, /disputed/);
+  assert.ok(!text.includes("https://"), "raw addresses only clutter the answer");
 });
 
 test("a product watch alerts at or below the limit, once per price, and only for the right product", async () => {

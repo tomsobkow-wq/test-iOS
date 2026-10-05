@@ -637,4 +637,23 @@ final class BolekFlowUITests: XCTestCase {
             _ = ask(question, timeout: 200)
         }
     }
+
+    /// Bolek on the phone: product search, news, and watching both. Uses the Mac backend with real searches.
+    func testBolekSearchesAndTracksProductsAndNews() throws {
+        app.terminate()
+        app.launchEnvironment["BOLEK_START_MODE"] = "bolek"
+        app.launchEnvironment["BOLEK_DEBUG_TOOL_TRACE"] = "1"
+        app.launch()
+        Thread.sleep(forTimeInterval: 8)
+        var seconds = ask("Find me an electric bike for up to 5000 zł", timeout: 150)
+        shot("130-bike-search \(Int(seconds))s")
+        seconds = ask("What is the latest news on the war in Ukraine?", timeout: 150)
+        shot("131-news \(Int(seconds))s")
+        seconds = askHandlingPrompts("Watch the Touroll Urbano 3 electric bike and tell me if it drops below 4500 zł", approve: true, timeout: 150)
+        shot("132-watch-product \(Int(seconds))s")
+        seconds = askHandlingPrompts("Follow the news about the war in Ukraine and alert me to new headlines", approve: true, timeout: 150)
+        shot("133-watch-news \(Int(seconds))s")
+        seconds = ask("What am I watching?", timeout: 150)
+        shot("134-list \(Int(seconds))s")
+    }
 }

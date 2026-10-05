@@ -87,8 +87,8 @@ export function describeNews(query: NewsQuery, items: NewsItem[], nowMs: number,
   if (items.length === 0) return `No news found for "${query.query}".`;
   const lines = [`Latest news for "${query.query}" (newest first):`];
   items.slice(0, limit).forEach((item, i) => {
-    lines.push(`${i + 1}. [${age(item.publishedAt, nowMs)}] ${item.source}: ${item.title}${item.snippet ? ` | ${item.snippet.slice(0, 140)}` : ""} | ${item.link}`);
+    lines.push(`${i + 1}. [${age(item.publishedAt, nowMs)}] ${item.source}: ${item.title}${item.snippet ? ` | ${item.snippet.slice(0, 140)}` : ""}`);
   });
-  lines.push("Write the answer only from these headlines. Say which outlet reported each point and when; where outlets differ or a claim is disputed, say so; never add facts that are not listed. Keep it short and end with the links.");
+  lines.push("Write the answer only from these headlines. Say which outlet reported each point and when; where outlets differ or a claim is disputed, say so; never add facts that are not listed. Keep it short. Do not print web addresses: the user cannot tap them here, so name the outlet instead.");
   return lines.join("\n");
 }
