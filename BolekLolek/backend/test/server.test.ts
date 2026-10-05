@@ -26,10 +26,10 @@ test("health is open, everything else needs the token", async () => {
 
 test("the app can discover the tools", async () => {
   const { tools } = await (await fetch(`${base}/v1/tools`, { headers })).json() as { tools: Array<{ name: string; parameters: { type: string } }> };
-  assert.deepEqual(tools.map((t) => t.name), ["search_flights", "watch_flight_price", "search_products", "watch_product_price", "search_news", "watch_news", "list_watches", "stop_watch"]);
+  assert.deepEqual(tools.map((t) => t.name), ["search_flights", "watch_flight_price", "search_products", "watch_product_price", "search_news", "watch_news", "web_search", "read_page", "list_watches", "stop_watch"]);
   assert.ok(tools.every((t) => t.parameters.type === "object"));
   const risks = Object.fromEntries((await (await fetch(`${base}/v1/tools`, { headers })).json() as { tools: Array<{ name: string; risk: string }> }).tools.map((t) => [t.name, t.risk]));
-  assert.deepEqual(risks, { search_flights: "read", watch_flight_price: "write", search_products: "read", watch_product_price: "write", search_news: "read", watch_news: "write", list_watches: "read", stop_watch: "write" });
+  assert.deepEqual(risks, { search_flights: "read", watch_flight_price: "write", search_products: "read", watch_product_price: "write", search_news: "read", watch_news: "write", web_search: "read", read_page: "read", list_watches: "read", stop_watch: "write" });
 });
 
 test("a flight search works with city names and returns the facts", async () => {

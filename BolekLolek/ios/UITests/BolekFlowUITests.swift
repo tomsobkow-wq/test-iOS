@@ -656,4 +656,19 @@ final class BolekFlowUITests: XCTestCase {
         seconds = ask("What am I watching?", timeout: 150)
         shot("134-list \(Int(seconds))s")
     }
+
+    /// Bolek for an Australian phone: product search, flights and news must use the phone's own country and currency.
+    func testBolekUsesThePhonesOwnCountry() throws {
+        app.terminate()
+        app.launchEnvironment["BOLEK_START_MODE"] = "bolek"
+        app.launchEnvironment["BOLEK_DEBUG_TOOL_TRACE"] = "1"
+        app.launch()
+        Thread.sleep(forTimeInterval: 8)
+        var seconds = ask("Find me an electric bike for under 2000 dollars", timeout: 150)
+        shot("140-au-bike \(Int(seconds))s")
+        seconds = ask("Cheapest flight from Perth to Sydney on 2026-11-04?", timeout: 150)
+        shot("141-au-flight \(Int(seconds))s")
+        seconds = ask("What is the latest news on interest rates?", timeout: 150)
+        shot("142-au-news \(Int(seconds))s")
+    }
 }

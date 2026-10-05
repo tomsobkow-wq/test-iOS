@@ -157,7 +157,7 @@ function toolContext(extra: Partial<ToolContext> = {}): { ctx: ToolContext; shop
   const shopping = new FakeShopping(), news = new FakeNews();
   const ctx: ToolContext = {
     db: base.db, config: { ...base.config, maxWatches: 5 }, quota: base.quota, provider: undefined, shopping, news,
-    caches: { products: new TtlCache(600_000), news: new TtlCache(300_000) }, defaults: { country: "pl", language: "pl", currency: "PLN" }, user: "default", now: () => NOW, ...extra,
+    caches: { products: new TtlCache(600_000), news: new TtlCache(300_000), web: new TtlCache(600_000), recentWeb: new TtlCache(1_800_000) }, defaults: { country: "pl", language: "pl", currency: "PLN" }, user: "default", now: () => NOW, ...extra,
   };
   return { ctx, shopping, news, limit: 5 };
 }

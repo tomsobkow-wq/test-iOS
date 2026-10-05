@@ -5,6 +5,7 @@ import { openDb, type Db } from "./db.ts";
 import { TtlCache } from "./cache.ts";
 import { SerpApiFlights, type FlightProvider } from "./flights.ts";
 import { SerpApiNews, type NewsProvider } from "./news.ts";
+import { SerpApiWeb, type WebProvider, type WebResult } from "./web.ts";
 import { SerpApiShopping, currencyFor, type ProductProvider } from "./shopping.ts";
 import { Quota } from "./quota.ts";
 import { startScheduler } from "./scheduler.ts";
@@ -18,6 +19,8 @@ export interface AppDeps {
   provider: FlightProvider | undefined;
   shopping?: ProductProvider;
   news?: NewsProvider;
+  web?: WebProvider;
+  pages?: ToolContext["pages"];
   now?: () => number;
 }
 
@@ -60,13 +63,13 @@ export function localeFrom(req: IncomingMessage): { country: string; language: s
 
 export function createApp(deps: AppDeps): Server {
   const now = deps.now ?? Date.now;
-  const caches = { products: new TtlCache<import("./shopping.ts").ProductOffer[]>(10 * 60_000), news: new TtlCache<import("./news.ts").NewsItem[]>(5 * 60_000) };
-  const context = (req?: IncomingMessage): ToolContext => ({ db: deps.db, config: deps.config, quota: deps.quota, provider: deps.provider, shopping: deps.shopping, news: deps.news, caches, defaults: req ? localeFrom(req) : undefined, user: USER, now });
+  const caches = { products: new TtlCache<import("./shopping.ts").ProductOffer[]>(10 * 60_000), news: new TtlCache<import("./news.ts").NewsItem[]>(5 * 60_000), web: new TtlCache<WebResult[]>(10 * 60_000), recentWeb: new TtlCache<WebResult[]>(30 * 60_000) };
+  const context = (req?: IncomingMessage): ToolContext => ({ db: deps.db, config: deps.config, quota: deps.quota, provider: deps.provider, shopping: deps.shopping, news: deps.news, web: deps.web, pages: deps.pages, caches, defaults: req ? localeFrom(req) : undefined, user: USER, now });
 
   return createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
     try {
-      if (req.method === "GET" && url.pathname === "/healthz") return send(res, 200, { ok: true, flights: !!deps.provider, products: !!deps.shopping, news: !!deps.news });
+      if (req.method === "GET" && url.pathname === "/healthz") return send(res, 200, { ok: true, flights: !!deps.provider, products: !!deps.shopping, news: !!deps.news, web: !!deps.web });
       if (!url.pathname.startsWith("/v1/")) return send(res, 404, { error: "not found" });
       if (!authorised(req, deps.config.apiToken)) return send(res, 401, { error: "unauthorised" });
 
@@ -114,7 +117,8 @@ if (import.meta.main) {
   const provider = config.serpApiKey ? new SerpApiFlights(config.serpApiKey) : undefined;
   const shopping = config.serpApiKey ? new SerpApiShopping(config.serpApiKey) : undefined;
   const news = config.serpApiKey ? new SerpApiNews(config.serpApiKey) : undefined;
-  const server = createApp({ config, db, quota, provider, shopping, news });
+  const web = config.serpApiKey ? new SerpApiWeb(config.serpApiKey) : undefined;
+  const server = createApp({ config, db, quota, provider, shopping, news, web });
   if (provider) startScheduler({ db, provider, shopping, news, quota, onTick: (s) => console.log(`[watches] checked ${s.checked}, alerts ${s.alerts}, failed ${s.failed}, no quota ${s.skippedNoQuota}`) }, config.tickSeconds * 1000);
   server.listen(config.port, config.host, () => {
     console.log(`Bolek backend on http://${config.host}:${config.port}  flights, products, news: ${provider ? "SerpApi" : "NOT configured (set SERPAPI_KEY)"}  searches this month: ${quota.used(Date.now())}/${quota.limit}`);
