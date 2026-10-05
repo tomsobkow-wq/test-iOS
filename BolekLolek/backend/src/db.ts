@@ -58,5 +58,13 @@ export function openDb(path: string): Db {
     );
     CREATE TABLE IF NOT EXISTS usage (month TEXT PRIMARY KEY, searches INTEGER NOT NULL);
   `);
+  addColumn(db, "topic_watches", "location", "TEXT");
+  addColumn(db, "alerts", "links_json", "TEXT");
   return db;
+}
+
+/** Adds a column to a table that may already exist from an earlier version of the server. */
+function addColumn(db: Db, table: string, column: string, type: string): void {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  if (!columns.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
 }

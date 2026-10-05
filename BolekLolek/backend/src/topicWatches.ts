@@ -2,6 +2,9 @@
 import { randomUUID } from "node:crypto";
 import type { Db } from "./db.ts";
 import type { NewsProvider } from "./news.ts";
+import { sourceLink, type SourceLink } from "./links.ts";
+import { overlap, words } from "./text.ts";
+import type { WebProvider } from "./web.ts";
 import type { ProductProvider } from "./shopping.ts";
 import { relevantOffers } from "./shopping.ts";
 import { money } from "./flights.ts";
@@ -11,8 +14,9 @@ const HOUR = 3_600_000;
 
 export interface TopicWatch {
   id: string;
-  kind: "product" | "news";
+  kind: "product" | "news" | "web";
   query: string;
+  location: string | null;
   country: string;
   language: string;
   currency: string | null;
@@ -26,15 +30,16 @@ export interface TopicWatch {
 
 type Row = Record<string, unknown>;
 const toWatch = (r: Row): TopicWatch => ({
-  id: r.id as string, kind: r.kind as "product" | "news", query: r.query as string, country: r.country as string, language: r.language as string,
+  id: r.id as string, kind: r.kind as "product" | "news" | "web", query: r.query as string, location: (r.location as string | null) ?? null, country: r.country as string, language: r.language as string,
   currency: (r.currency as string | null) ?? null, thresholdMinor: (r.threshold_minor as number | null) ?? null, everyHours: r.every_hours as number,
   nextRunAt: r.next_run_at as number, lastPriceMinor: (r.last_price_minor as number | null) ?? null, lastCheckedAt: (r.last_checked_at as number | null) ?? null,
   seen: JSON.parse((r.seen_json as string) || "[]") as string[],
 });
 
 export interface NewTopicWatch {
-  kind: "product" | "news";
+  kind: "product" | "news" | "web";
   query: string;
+  location?: string;
   country: string;
   language: string;
   currency?: string;
@@ -53,9 +58,9 @@ export function createTopicWatch(db: Db, user: string, input: NewTopicWatch, now
   const active = countActiveWatches(db, user);
   if (active >= maxWatches) throw new Error(`You already have ${active} active watches, which is the limit (${maxWatches}). Stop one first.`);
   const id = randomUUID().slice(0, 8);
-  db.prepare(`INSERT INTO topic_watches (id, user, kind, query, country, language, currency, threshold_minor, every_hours, next_run_at, created_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(id, user, input.kind, input.query, input.country, input.language, input.currency ?? null, input.thresholdMinor ?? null, input.everyHours, nowMs, nowMs);
+  db.prepare(`INSERT INTO topic_watches (id, user, kind, query, location, country, language, currency, threshold_minor, every_hours, next_run_at, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(id, user, input.kind, input.query, input.location ?? null, input.country, input.language, input.currency ?? null, input.thresholdMinor ?? null, input.everyHours, nowMs, nowMs);
   return toWatch(db.prepare("SELECT * FROM topic_watches WHERE id = ?").get(id) as Row);
 }
 
@@ -68,6 +73,7 @@ export function stopTopicWatch(db: Db, user: string, id: string): boolean {
 }
 
 export function describeTopicWatch(w: TopicWatch): string {
+  if (w.kind === "web") return `[${w.id}] new web results for "${w.query}"${w.location ? ` near ${w.location}` : ""}: alert when new relevant results appear, checked every ${w.everyHours}h`;
   if (w.kind === "news") return `[${w.id}] news on "${w.query}" (${w.language}, ${w.country}): alert on new headlines, checked every ${w.everyHours}h`;
   const last = w.lastPriceMinor === null ? "not checked yet" : `lowest seen ${money(w.lastPriceMinor, w.currency ?? "")}`;
   return `[${w.id}] product "${w.query}": alert at or below ${money(w.thresholdMinor ?? 0, w.currency ?? "")}, checked every ${w.everyHours}h, ${last}`;
@@ -75,9 +81,9 @@ export function describeTopicWatch(w: TopicWatch): string {
 
 export interface TopicCheckSummary { checked: number; alerts: number; skippedNoQuota: number; failed: number }
 
-function addAlert(db: Db, watchId: string, nowMs: number, title: string, body: string, priceMinor: number, currency: string): void {
-  db.prepare("INSERT INTO alerts (user, watch_id, created_at, title, body, price_minor, currency) SELECT user, id, ?, ?, ?, ?, ? FROM topic_watches WHERE id = ?")
-    .run(nowMs, title, body, priceMinor, currency, watchId);
+function addAlert(db: Db, watchId: string, nowMs: number, title: string, body: string, priceMinor: number, currency: string, links: SourceLink[] = []): void {
+  db.prepare("INSERT INTO alerts (user, watch_id, created_at, title, body, price_minor, currency, links_json) SELECT user, id, ?, ?, ?, ?, ?, ? FROM topic_watches WHERE id = ?")
+    .run(nowMs, title, body, priceMinor, currency, links.length ? JSON.stringify(links.slice(0, 5)) : null, watchId);
 }
 
 /**
@@ -86,13 +92,13 @@ function addAlert(db: Db, watchId: string, nowMs: number, title: string, body: s
  * so a new watch does not start with a flood.
  */
 export async function checkDueTopicWatches(
-  db: Db, providers: { shopping?: ProductProvider; news?: NewsProvider }, quota: Quota, nowMs: number,
+  db: Db, providers: { shopping?: ProductProvider; news?: NewsProvider; web?: WebProvider }, quota: Quota, nowMs: number,
 ): Promise<TopicCheckSummary> {
   const summary: TopicCheckSummary = { checked: 0, alerts: 0, skippedNoQuota: 0, failed: 0 };
   const due = (db.prepare("SELECT * FROM topic_watches WHERE active = 1 AND next_run_at <= ? ORDER BY next_run_at").all(nowMs) as Row[]).map(toWatch);
 
   for (const watch of due) {
-    const provider = watch.kind === "product" ? providers.shopping : providers.news;
+    const provider = watch.kind === "product" ? providers.shopping : watch.kind === "news" ? providers.news : providers.web;
     if (!provider) continue;
     if (!quota.consume(nowMs)) { summary.skippedNoQuota += 1; continue; }
     try {
@@ -108,6 +114,22 @@ export async function checkDueTopicWatches(
         addAlert(db, watch.id, nowMs, `Price drop: ${watch.query}`,
           `${money(cheapest.priceMinor, cheapest.currency)} at ${cheapest.shop} (your limit ${money(watch.thresholdMinor, cheapest.currency)}): ${cheapest.title.slice(0, 80)}`, cheapest.priceMinor, cheapest.currency);
         db.prepare("UPDATE topic_watches SET last_alert_price_minor = ? WHERE id = ?").run(cheapest.priceMinor, watch.id);
+        summary.alerts += 1;
+      } else if (watch.kind === "web") {
+        const results = await providers.web!.search({ query: watch.query, country: watch.country, language: watch.language, location: watch.location ?? undefined });
+        summary.checked += 1;
+        // Only results that are really about the thing count: most of the query's words must be in the title or snippet.
+        const wanted = words(watch.query);
+        const relevant = results.filter((r) => overlap(wanted, `${r.title} ${r.snippet}`) >= 0.6);
+        const known = new Set(watch.seen);
+        const fresh = relevant.filter((r) => !known.has(r.link));
+        const seen = [...fresh.map((r) => r.link), ...watch.seen].slice(0, 300);
+        db.prepare("UPDATE topic_watches SET last_checked_at = ?, next_run_at = ?, seen_json = ? WHERE id = ?")
+          .run(nowMs, nowMs + watch.everyHours * HOUR, JSON.stringify(seen), watch.id);
+        if (watch.lastCheckedAt === null || fresh.length === 0) continue;   // the first check only learns what is already there
+        const lines = fresh.slice(0, 3).map((r) => `${r.source}: ${r.title}${r.snippet ? ` | ${r.snippet.slice(0, 100)}` : ""}`).join(" || ");
+        const links = fresh.map((r) => sourceLink(r.title, r.source, r.link)).filter((l): l is SourceLink => !!l);
+        addAlert(db, watch.id, nowMs, `New results: ${watch.query}`, `${fresh.length} new ${fresh.length === 1 ? "result" : "results"}. ${lines}`, 0, "", links);
         summary.alerts += 1;
       } else {
         const items = await providers.news!.search({ query: watch.query, country: watch.country, language: watch.language });

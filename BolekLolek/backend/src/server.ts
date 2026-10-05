@@ -87,7 +87,10 @@ export function createApp(deps: AppDeps): Server {
           args = raw as Record<string, unknown>;
         } catch { return send(res, 400, { ok: false, content: "arguments must be a JSON object" }); }
         try {
-          return send(res, 200, { ok: true, content: await tool.run(args, context(req)) });
+          const toolContext = context(req);
+          toolContext.sources = [];
+          const content = await tool.run(args, toolContext);
+          return send(res, 200, { ok: true, content, sources: toolContext.sources });
         } catch (error) {
           // Failures the user or model can fix are returned as text. Anything else is reported without internals.
           return send(res, 200, { ok: false, content: error instanceof ToolFailure || error instanceof Error && /watch|limit/i.test(error.message) ? error.message : "The tool failed on the server. Try again later." });
@@ -119,7 +122,7 @@ if (import.meta.main) {
   const news = config.serpApiKey ? new SerpApiNews(config.serpApiKey) : undefined;
   const web = config.serpApiKey ? new SerpApiWeb(config.serpApiKey) : undefined;
   const server = createApp({ config, db, quota, provider, shopping, news, web });
-  if (provider) startScheduler({ db, provider, shopping, news, quota, onTick: (s) => console.log(`[watches] checked ${s.checked}, alerts ${s.alerts}, failed ${s.failed}, no quota ${s.skippedNoQuota}`) }, config.tickSeconds * 1000);
+  if (provider) startScheduler({ db, provider, shopping, news, web, quota, onTick: (s) => console.log(`[watches] checked ${s.checked}, alerts ${s.alerts}, failed ${s.failed}, no quota ${s.skippedNoQuota}`) }, config.tickSeconds * 1000);
   server.listen(config.port, config.host, () => {
     console.log(`Bolek backend on http://${config.host}:${config.port}  flights, products, news: ${provider ? "SerpApi" : "NOT configured (set SERPAPI_KEY)"}  searches this month: ${quota.used(Date.now())}/${quota.limit}`);
   });

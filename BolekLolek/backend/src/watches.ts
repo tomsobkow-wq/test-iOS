@@ -31,6 +31,7 @@ export interface Alert {
   priceMinor: number;
   currency: string;
   seen: boolean;
+  links: Array<{ title: string; site: string; url: string }>;
 }
 
 type WatchRow = Record<string, unknown>;
@@ -77,6 +78,7 @@ export function listAlerts(db: Db, user: string, afterId: number): Alert[] {
   return (db.prepare("SELECT * FROM alerts WHERE user = ? AND id > ? ORDER BY id").all(user, afterId) as WatchRow[]).map((r) => ({
     id: r.id as number, watchId: r.watch_id as string, createdAt: r.created_at as number, title: r.title as string, body: r.body as string,
     priceMinor: r.price_minor as number, currency: r.currency as string, seen: r.seen === 1,
+    links: r.links_json ? (JSON.parse(r.links_json as string) as Alert["links"]) : [],
   }));
 }
 

@@ -4,7 +4,11 @@ import { describeWeb, ipv6ToBigInt, isPrivateAddress, makeSafeLookup, parseWeb, 
 import { TtlCache } from "../src/cache.ts";
 import { tools, type ToolContext } from "../src/tools.ts";
 import { NOW, setup } from "./helpers.ts";
-import { FakeNews, FakeShopping } from "./helpers2.ts";
+import { FakeNews, FakeShopping, offer, item } from "./helpers2.ts";
+import { sourceLink } from "../src/links.ts";
+import { checkDueTopicWatches, createTopicWatch } from "../src/topicWatches.ts";
+import { listAlerts } from "../src/watches.ts";
+import { openDb } from "../src/db.ts";
 
 const publicHost = async () => ["93.184.216.34"];
 const html = (body: string) => ({ status: 200, type: "text/html; charset=utf-8", body: `<html><head><title>x</title><script>alert(1)</script></head><body>${body}</body></html>` });
@@ -182,4 +186,95 @@ test("an address typed as a number in the link is refused before any connection"
     assert.equal(result.ok, false, url);
   }
   assert.equal(fetched, 0);
+});
+
+test("only https links to real sites become buttons the user can tap", () => {
+  assert.deepEqual(sourceLink("  BMW  R18 \n for sale ", "Bikesales", "https://www.bikesales.com.au/bikes/r18"), { title: "BMW R18 for sale", site: "Bikesales", url: "https://www.bikesales.com.au/bikes/r18" });
+  assert.equal(sourceLink("x", "y", "http://plain.example/"), undefined);
+  assert.equal(sourceLink("x", "y", "javascript:alert(1)"), undefined);
+  assert.equal(sourceLink("x", "y", "https://user:pw@evil.example/"), undefined);
+  assert.equal(sourceLink("x", "y", "https://localhost/"), undefined);
+  assert.equal(sourceLink("x", "y", "not a url"), undefined);
+  assert.equal(sourceLink("x", "", "https://www.gumtree.com.au/s")?.site, "gumtree.com.au", "the site name falls back to the host");
+  assert.ok((sourceLink("t".repeat(500), "s".repeat(500), "https://a.example/")?.title.length ?? 999) <= 120);
+});
+
+test("searches hand their sources to the answer: at most six, no duplicates, https only", async () => {
+  const web = { results: [...R18, { title: "Insecure", source: "Plain", snippet: "x", link: "http://plain.example/x" }, ...Array.from({ length: 9 }, (_, i) => ({ title: `R ${i}`, source: "Site", snippet: "bike", link: `https://site.example/${i}` })), R18[0]], queries: [] as Array<Record<string, unknown>> };
+  const ctx = ctxWith(web, { sources: [] });
+  await tool("web_search").run({ query: "BMW R18 for sale" }, ctx);
+  assert.equal(ctx.sources?.length, 6);
+  assert.equal(new Set(ctx.sources?.map((s) => s.url)).size, 6);
+  assert.ok(ctx.sources?.every((s) => s.url.startsWith("https://")));
+  assert.equal(ctx.sources?.[0].site, "Bikesales");
+  const news = new FakeNews();
+  news.items = [item("Headline", "https://news.example/a", "Reuters")];
+  const newsCtx = ctxWith(web, { sources: [], news });
+  await tool("search_news").run({ query: "x y" }, newsCtx);
+  assert.deepEqual(newsCtx.sources?.map((s) => s.site), ["Reuters"]);
+  const shopping = new FakeShopping();
+  shopping.offers = [offer("Rower elektryczny A", 300_000, "Decathlon")];
+  const shopCtx = ctxWith(web, { sources: [], shopping });
+  await tool("search_products").run({ query: "rower elektryczny" }, shopCtx);
+  assert.equal(shopCtx.sources?.length, 1);
+});
+
+class FakeWeb {
+  results: WebResult[] = [];
+  fail = false;
+  async search() { if (this.fail) throw new Error("boom"); return this.results; }
+}
+const r = (title: string, link: string, snippet = "BMW R18 for sale in Perth, WA"): WebResult => ({ title, source: "Bikesales", snippet, link });
+
+test("a web watch starts quiet, then alerts only on new RELEVANT results, with links to open", async () => {
+  const { db, quota } = setup(20);
+  const web = new FakeWeb();
+  createTopicWatch(db, "default", { kind: "web", query: "BMW R18 for sale Perth", location: "Perth, Western Australia, Australia", country: "au", language: "en", everyHours: 12 }, NOW, 5);
+  web.results = [r("2021 BMW R18 Classic", "https://bikesales.example/1"), r("BMW R18 dealer", "https://dealer.example/2")];
+  assert.equal((await checkDueTopicWatches(db, { web }, quota, NOW)).alerts, 0, "the first check only learns what is already there");
+  const HOUR = 3_600_000;
+  assert.equal((await checkDueTopicWatches(db, { web }, quota, NOW + 12 * HOUR)).alerts, 0, "nothing new, nothing said");
+  web.results = [...web.results, r("Cheap helmet sale", "https://shop.example/helmet", "Helmets on special"), r("2023 BMW R18 Transcontinental", "https://gumtree.example/3", "BMW R18 for sale Perth $29,990")];
+  const summary = await checkDueTopicWatches(db, { web }, quota, NOW + 24 * HOUR);
+  assert.equal(summary.alerts, 1);
+  const [alert] = listAlerts(db, "default", 0);
+  assert.match(alert.title, /New results: BMW R18 for sale Perth/);
+  assert.match(alert.body, /1 new result\. Bikesales: 2023 BMW R18 Transcontinental/);
+  assert.ok(!alert.body.includes("helmet"), "an unrelated result is not announced");
+  assert.deepEqual(alert.links.map((l) => l.url), ["https://gumtree.example/3"]);
+  assert.equal((await checkDueTopicWatches(db, { web }, quota, NOW + 36 * HOUR)).alerts, 0, "the same result is not announced twice");
+});
+
+test("web watches refuse vague topics, count against the shared limit and migrate older databases", async () => {
+  const base = setup(5);
+  const web = new FakeWeb();
+  const ctx = ctxWith({ results: [], queries: [] }, { db: base.db, quota: base.quota, config: { ...base.config, maxWatches: 1 }, web });
+  await assert.rejects(tool("watch_web_search").run({ query: "bikes" }, ctx), /too vague/);
+  const ok = await tool("watch_web_search").run({ query: "BMW R18 for sale", location: "Perth, Western Australia, Australia" }, ctx);
+  assert.match(ok, /new web results for "BMW R18 for sale" near Perth/);
+  assert.match(ok, /search results only/);
+  await assert.rejects(tool("watch_web_search").run({ query: "Harley Davidson Sportster Perth" }, ctx), /limit/);
+  // An older database has no location or links columns; opening it adds them without losing anything.
+  const { DatabaseSync } = await import("node:sqlite");
+  const old = new DatabaseSync(":memory:");
+  old.exec("CREATE TABLE topic_watches (id TEXT PRIMARY KEY, user TEXT, kind TEXT, query TEXT, country TEXT, language TEXT, currency TEXT, threshold_minor INTEGER, every_hours INTEGER, next_run_at INTEGER, last_price_minor INTEGER, last_checked_at INTEGER, last_alert_price_minor INTEGER, seen_json TEXT, active INTEGER, created_at INTEGER); INSERT INTO topic_watches (id, user, kind, query, country, language, every_hours, next_run_at, seen_json, active, created_at) VALUES ('a', 'u', 'news', 'q', 'pl', 'pl', 6, 0, '[]', 1, 0);");
+  const migrated = openDb(":memory:");
+  const cols = (db: typeof migrated) => (db.prepare("PRAGMA table_info(topic_watches)").all() as Array<{ name: string }>).map((c) => c.name);
+  assert.ok(cols(migrated).includes("location"));
+  assert.ok(!cols(old as never).includes("location"));
+});
+
+test("the server sends the sources with the tool answer", async () => {
+  const { createApp } = await import("../src/server.ts");
+  const base = setup(5);
+  const web = { async search() { return R18; } };
+  const server = createApp({ config: base.config, db: base.db, quota: base.quota, provider: undefined, web, now: () => NOW });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const port = (server.address() as { port: number }).port;
+    const response = await fetch(`http://127.0.0.1:${port}/v1/tools/call`, { method: "POST", headers: { authorization: "Bearer test-token-0123456789", "content-type": "application/json" }, body: JSON.stringify({ name: "web_search", arguments: { query: "BMW R18 for sale" } }) });
+    const reply = await response.json() as { ok: boolean; content: string; sources: Array<{ site: string; url: string }> };
+    assert.equal(reply.ok, true);
+    assert.deepEqual(reply.sources.map((s) => [s.site, s.url]), [["Bikesales", "https://www.bikesales.com.au/bikes/r18"]]);
+  } finally { server.close(); }
 });
