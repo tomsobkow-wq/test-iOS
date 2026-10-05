@@ -49,6 +49,12 @@ final class AppModel {
         #if DEBUG
         // Screenshot helpers: BOLEK_START_MODE=bolek, BOLEK_DEMO_HANDOFF=1.
         if ProcessInfo.processInfo.environment["BOLEK_START_MODE"] == "bolek" { mode = .bolek }
+        // Test helper: BOLEK_DEBUG_IMPORT=<file in the app's Documents folder> adds that file as if picked from Files.
+        if let name = ProcessInfo.processInfo.environment["BOLEK_DEBUG_IMPORT"],
+           let documentsFolder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first,
+           let data = try? Data(contentsOf: documentsFolder.appendingPathComponent(name)) {
+            Task { @MainActor [lolek] in lolek.importDocument(data: data, name: name) }
+        }
         if ProcessInfo.processInfo.environment["BOLEK_DEMO_HANDOFF"] == "1" { Task { handoff.begin(userText: "Sprawdź ceny lotów do Lizbony"); await handoff.offer(request: "") } }
         #endif
         lolekSetup.onReady = { [weak lolek] in Task { @MainActor in lolek?.warmUp() } }

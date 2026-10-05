@@ -69,4 +69,23 @@ final class BolekFlowUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 2)
         shot("10-after-connect-tap")
     }
+
+    /// Needs wyciag-wrzesien-2026.csv in the app's Documents folder (copied there with devicectl).
+    func testStatementQuestions() throws {
+        app.terminate()
+        app.launchEnvironment["BOLEK_DEBUG_IMPORT"] = "wyciag-wrzesien-2026.csv"
+        app.launch()
+        Thread.sleep(forTimeInterval: 8)
+        shot("11-statement-summary")
+        let questions = [
+            "Ile wydałem w Biedronce we wrześniu?",
+            "Ile wydałem na paliwo?",
+            "Jaki był mój największy wydatek?",
+            "Ile łącznie wydałem i ile zarobiłem?",
+        ]
+        for (index, question) in questions.enumerated() {
+            send(question, waitSeconds: index == 0 ? 90 : 45)
+            shot("12-q\(index + 1)")
+        }
+    }
 }

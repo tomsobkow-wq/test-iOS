@@ -30,7 +30,22 @@ public actor LolekEngineHost {
         guard store.isInstalled(model) else { throw LolekError.modelNotInstalled(model.profile.displayName) }
         var settings = settings
         settings.contextTokens = min(settings.contextTokens, model.profile.contextTokens)
-        let loaded = try await LlamaEngine(modelPath: store.path(for: model).path, settings: settings)
+        let path = store.path(for: model).path
+        let loaded: LlamaEngine
+        do {
+            loaded = try await LlamaEngine(modelPath: path, settings: settings)
+        } catch LlamaEngineError.contextFailed {
+            // Seen on a real iPhone right after a relaunch: iOS had not yet given back the previous run's memory.
+            // Wait, try again, and if it still does not fit, load with a smaller working window rather than fail.
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            do {
+                loaded = try await LlamaEngine(modelPath: path, settings: settings)
+            } catch LlamaEngineError.contextFailed {
+                settings.contextTokens = max(2048, settings.contextTokens / 2)
+                settings.batchTokens = max(128, settings.batchTokens / 2)
+                loaded = try await LlamaEngine(modelPath: path, settings: settings)
+            }
+        }
         engine = loaded
         return loaded
     }
