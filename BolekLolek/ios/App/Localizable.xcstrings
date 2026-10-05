@@ -361,26 +361,6 @@
         }
       }
     },
-    "Disconnect Gmail": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Odłącz Gmaila"
-          }
-        }
-      }
-    },
-    "Gmail is connected. I read your email on this iPhone only: nothing from it goes to Bolek or any server. Try “any unread email?”": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gmail jest połączony. Czytam Twoją pocztę tylko na tym iPhonie: nic z niej nie trafia do Bolka ani na żaden serwer. Spróbuj: „czy mam nieprzeczytane maile?”"
-          }
-        }
-      }
-    },
     "Gmail needs permission to read your email. Connect again and leave “Read your email” ticked.": {
       "localizations": {
         "pl": {
@@ -417,6 +397,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Logowanie do Gmaila nie jest jeszcze skonfigurowane w tej wersji testowej: potrzebny jest identyfikator klienta Google od dewelopera."
+          }
+        }
+      }
+    },
+    "Connect another Gmail": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Połącz kolejnego Gmaila"
+          }
+        }
+      }
+    },
+    "Disconnect %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odłącz %@"
+          }
+        }
+      }
+    },
+    "Gmail (%@) is connected. I read your email on this iPhone only: nothing from it goes to Bolek or any server. Try “any unread email?”": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail (%@) jest połączony. Czytam Twoją pocztę tylko na tym iPhonie: nic z niej nie trafia do Bolka ani na żaden serwer. Spróbuj: „czy mam nieprzeczytane maile?”"
           }
         }
       }

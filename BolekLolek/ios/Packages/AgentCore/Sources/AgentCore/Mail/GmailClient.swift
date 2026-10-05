@@ -7,8 +7,11 @@ public struct EmailSummary: Sendable, Equatable {
     public let date: Date?
     public let snippet: String
     public let isUnread: Bool
+    /// Which connected mailbox it came from; set only when more than one is connected.
+    public var account: String?
 
-    public init(id: String, from: String, subject: String, date: Date?, snippet: String, isUnread: Bool) {
+    public init(id: String, from: String, subject: String, date: Date?, snippet: String, isUnread: Bool, account: String? = nil) {
+        self.account = account
         self.id = id
         self.from = from
         self.subject = subject

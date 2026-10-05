@@ -139,3 +139,76 @@ final class EmailToolsTests: XCTestCase {
         }
     }
 }
+
+
+private struct FixedMail: EmailProviding {
+    let name: String
+    let times: [TimeInterval]
+    var fail = false
+    func isConnected() async -> Bool { true }
+    func search(query: String, limit: Int) async throws -> [EmailSummary] {
+        if fail { throw ToolError("sign-in expired") }
+        return times.enumerated().map { EmailSummary(id: "abc\($0.offset)", from: name, subject: "\(name) \($0.offset)", date: Date(timeIntervalSince1970: $0.element), snippet: "", isUnread: false) }
+    }
+    func message(id: String) async throws -> EmailMessage {
+        EmailMessage(summary: EmailSummary(id: id, from: name, subject: "S", date: nil, snippet: "", isUnread: false), to: name, body: "body of \(id) in \(name)")
+    }
+}
+
+final class MultiEmailProviderTests: XCTestCase {
+    private func multi(_ accounts: [MultiEmailProvider.Account]) -> MultiEmailProvider { MultiEmailProvider(accounts: { accounts }) }
+
+    func testMergesNewestFirstAndLabelsAccountsWhenThereAreSeveral() async throws {
+        let provider = multi([
+            .init(label: "a@gmail.com", provider: FixedMail(name: "A", times: [100, 300])),
+            .init(label: "b@gmail.com", provider: FixedMail(name: "B", times: [200])),
+        ])
+        let results = try await provider.search(query: "", limit: 5)
+        XCTAssertEqual(results.map(\.subject), ["A 1", "B 0", "A 0"])
+        XCTAssertEqual(results.map(\.account), ["a@gmail.com", "b@gmail.com", "a@gmail.com"])
+        XCTAssertEqual(results.map(\.id), ["0zabc1", "1zabc0", "0zabc0"])
+    }
+
+    func testSingleAccountIsNotLabelled() async throws {
+        let results = try await multi([.init(label: "a@gmail.com", provider: FixedMail(name: "A", times: [1]))]).search(query: "", limit: 5)
+        XCTAssertNil(results.first?.account)
+    }
+
+    func testReadRoutesToTheRightAccount() async throws {
+        let provider = multi([
+            .init(label: "a@gmail.com", provider: FixedMail(name: "A", times: [])),
+            .init(label: "b@gmail.com", provider: FixedMail(name: "B", times: [])),
+        ])
+        let email = try await provider.message(id: "1zabc7")
+        XCTAssertEqual(email.body, "body of abc7 in B")
+        XCTAssertEqual(email.summary.account, "b@gmail.com")
+        XCTAssertEqual(email.summary.id, "1zabc7")
+    }
+
+    func testBadIdsAreRejected() async {
+        let provider = multi([.init(label: "a", provider: FixedMail(name: "A", times: []))])
+        for bad in ["abc", "5zabc", "zabc", "-1zabc", ""] {
+            do { _ = try await provider.message(id: bad); XCTFail("accepted \(bad)") } catch is ToolError {} catch { XCTFail("wrong error") }
+        }
+    }
+
+    func testOneBrokenAccountDoesNotHideTheOther() async throws {
+        let provider = multi([
+            .init(label: "a", provider: FixedMail(name: "A", times: [], fail: true)),
+            .init(label: "b", provider: FixedMail(name: "B", times: [50])),
+        ])
+        let results = try await provider.search(query: "", limit: 5)
+        XCTAssertEqual(results.map(\.subject), ["B 0"])
+    }
+
+    func testAllAccountsBrokenReportsTheError() async {
+        let provider = multi([.init(label: "a", provider: FixedMail(name: "A", times: [], fail: true))])
+        do { _ = try await provider.search(query: "", limit: 5); XCTFail() } catch let error as ToolError { XCTAssertEqual(error.message, "sign-in expired") } catch { XCTFail() }
+    }
+
+    func testNoAccountsMeansNotConnected() async {
+        let none = multi([])
+        let connected = await none.isConnected()
+        XCTAssertFalse(connected)
+    }
+}

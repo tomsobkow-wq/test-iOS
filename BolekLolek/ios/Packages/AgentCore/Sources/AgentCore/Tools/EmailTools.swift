@@ -16,6 +16,7 @@ enum EmailContent {
         var parts = ["[\(email.id)]"]
         if let date = email.date { parts.append(ToolDates.describe(date, calendar: clock.calendar)) }
         parts.append(email.isUnread ? "UNREAD" : "read")
+        if let account = email.account { parts.append("Account: \(account)") }
         parts.append("From: \(email.from)")
         parts.append("Subject: \(email.subject)")
         let snippet = email.snippet.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -26,7 +27,7 @@ enum EmailContent {
 public struct SearchEmailTool: Tool, ConditionallyAvailable {
     public let name = "search_email"
     public let description = LocalizedText(
-        en: "Search the user's Gmail inbox, newest first. The query uses Gmail search words, e.g. \"is:unread\", \"from:delta\", \"flight confirmation\", \"newer_than:7d\". Leave it empty for the latest emails. Returns ids to use with read_email.",
+        en: "Search the user's Gmail inbox (all connected accounts), newest first. The query uses Gmail search words, e.g. \"is:unread\", \"from:delta\", \"flight confirmation\", \"newer_than:7d\". Leave it empty for the latest emails. Returns ids to use with read_email.",
         pl: "Przeszukaj skrzynkę Gmail użytkownika, od najnowszych. Zapytanie w składni Gmaila, np. \"is:unread\", \"from:delta\", \"potwierdzenie lotu\", \"newer_than:7d\". Puste zapytanie zwraca najnowsze maile. Zwraca identyfikatory do read_email."
     )
     public let parametersSchema = #"{"type":"object","properties":{"query":{"type":"string","description":"Gmail search query"},"limit":{"type":"integer","description":"How many emails, 1 to 10"}}}"#
