@@ -18,8 +18,8 @@ enum EmailContent {
         parts.append(email.isUnread ? "UNREAD" : "read")
         if let account = email.account { parts.append("Account: \(account)") }
         parts.append("From: \(email.from)")
-        parts.append("Subject: \(email.subject)")
-        let snippet = email.snippet.trimmingCharacters(in: .whitespacesAndNewlines)
+        parts.append("Subject: \(EmailSanitizer.clean(email.subject))")
+        let snippet = EmailSanitizer.clean(email.snippet).trimmingCharacters(in: .whitespacesAndNewlines)
         return parts.joined(separator: " | ") + (snippet.isEmpty ? "" : "\n    \(snippet.prefix(160))")
     }
 }
@@ -27,16 +27,23 @@ enum EmailContent {
 public struct SearchEmailTool: Tool, ConditionallyAvailable {
     public let name = "search_email"
     public let description = LocalizedText(
-        en: "Search the user's Gmail inbox (all connected accounts), newest first. The query uses Gmail search words, e.g. \"is:unread\", \"from:delta\", \"flight confirmation\", \"newer_than:7d\". Leave it empty for the latest emails. Returns ids to use with read_email.",
-        pl: "Przeszukaj skrzynkę Gmail użytkownika, od najnowszych. Zapytanie w składni Gmaila, np. \"is:unread\", \"from:delta\", \"potwierdzenie lotu\", \"newer_than:7d\". Puste zapytanie zwraca najnowsze maile. Zwraca identyfikatory do read_email."
+        en: "Find emails in the user's connected Gmail accounts, newest first. Use for any question about what mail arrived: counts, unread, from a person or company, a time period. Reads every match across all pages and returns the true count grouped by people, updates and promotions. Set when to today, yesterday, this_week, last_7_days or last_30_days; unread=true for unread only; from for a sender; text for words to look for. Returns ids for read_email.",
+        pl: "Znajdź maile w połączonych kontach Gmail, od najnowszych. Używaj przy każdym pytaniu o to, jaka poczta przyszła: liczby, nieprzeczytane, od osoby lub firmy, okres. Czyta wszystkie pasujące wiadomości ze wszystkich stron i zwraca prawdziwą liczbę pogrupowaną na osoby, powiadomienia i promocje. Ustaw when na today, yesterday, this_week, last_7_days lub last_30_days; unread=true tylko dla nieprzeczytanych; from dla nadawcy; text dla szukanych słów. Zwraca identyfikatory dla read_email."
     )
-    public let parametersSchema = #"{"type":"object","properties":{"query":{"type":"string","description":"Gmail search query"},"limit":{"type":"integer","description":"How many emails, 1 to 10"}}}"#
+    public let parametersSchema = #"{"type":"object","properties":{"when":{"type":"string","enum":["any","today","yesterday","this_week","last_7_days","last_30_days"]},"unread":{"type":"boolean"},"from":{"type":"string","description":"Sender name or address"},"text":{"type":"string","description":"Words to look for"},"query":{"type":"string","description":"Advanced Gmail search syntax, rarely needed"},"account":{"type":"string","description":"Only this mailbox, if the user names one"}}}"#
     public let tier = ToolTier.lolek
     public let risk = ToolRisk.read
     let provider: any EmailProviding
     let clock: ToolClock
 
-    struct Args: Decodable { let query: String?; let limit: Int? }
+    struct Args: Decodable {
+        let when: String?
+        let unread: LooseBool?
+        let from: String?
+        let text: String?
+        let query: String?
+        let account: String?
+    }
 
     public init(provider: any EmailProviding, clock: ToolClock = ToolClock()) {
         self.provider = provider
@@ -46,10 +53,33 @@ public struct SearchEmailTool: Tool, ConditionallyAvailable {
     public func isAvailable() async -> Bool { await provider.isConnected() }
 
     public func run(argumentsJSON: String) async throws -> String {
-        let args = (try? ToolArguments.decode(Args.self, from: argumentsJSON)) ?? Args(query: nil, limit: nil)
-        let results = try await provider.search(query: args.query ?? "", limit: args.limit ?? 5)
-        if results.isEmpty { return "No emails matched." }
-        return EmailContent.warning + "\n" + results.map { EmailContent.line($0, clock: clock) }.joined(separator: "\n")
+        let args = (try? ToolArguments.decode(Args.self, from: argumentsJSON)) ?? Args(when: nil, unread: nil, from: nil, text: nil, query: nil, account: nil)
+        let spec = EmailQuerySpec(
+            when: args.when.flatMap { EmailWhen(rawValue: $0) } ?? .any, unread: args.unread?.value ?? false,
+            from: args.from, text: args.text, raw: args.query, account: args.account
+        )
+        let builder = EmailQueryBuilder(clock: clock)
+        let query = builder.gmailQuery(spec)
+        let accounts = await provider.accountLabels()
+        let collected: EmailDigest.Collected
+        if let feed = await provider.feed(query: query, account: spec.account) {
+            collected = try await EmailDigest.collect(from: feed)
+        } else {
+            let found = try await provider.search(query: query, limit: 10)
+            collected = EmailDigest.Collected(items: found, complete: found.count < 10, failedAccounts: [], estimatedTotal: found.count)
+        }
+        return EmailDigest.render(collected, searched: builder.describe(spec), accounts: accounts, clock: clock)
+    }
+}
+
+/// A flag the model may write as true, "true" or 1.
+struct LooseBool: Decodable {
+    let value: Bool
+    init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        if let b = try? c.decode(Bool.self) { value = b; return }
+        if let s = try? c.decode(String.self) { value = ["true", "yes", "1", "tak"].contains(s.lowercased()); return }
+        value = ((try? c.decode(Int.self)) ?? 0) != 0
     }
 }
 
@@ -77,9 +107,9 @@ public struct ReadEmailTool: Tool, ConditionallyAvailable {
         \(EmailContent.warning)
         From: \(email.summary.from)
         To: \(email.to)
-        Subject: \(email.summary.subject)
+        Subject: \(EmailSanitizer.clean(email.summary.subject))
 
-        \(email.body)
+        \(EmailSanitizer.clean(email.body))
         """
     }
 }

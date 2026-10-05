@@ -1,5 +1,10 @@
 import Foundation
 
+/// A rough sort of who wrote it, used to group long lists. Gmail's own tabs plus a check for bulk-mail headers.
+public enum EmailKind: String, Sendable, Equatable, CaseIterable {
+    case person, updates, promotions, social
+}
+
 public struct EmailSummary: Sendable, Equatable {
     public let id: String
     public let from: String
@@ -9,9 +14,15 @@ public struct EmailSummary: Sendable, Equatable {
     public let isUnread: Bool
     /// Which connected mailbox it came from; set only when more than one is connected.
     public var account: String?
+    public var kind: EmailKind
+    /// Where a reply should go (Reply-To if present, else the sender's address).
+    public var replyAddress: String
 
-    public init(id: String, from: String, subject: String, date: Date?, snippet: String, isUnread: Bool, account: String? = nil) {
+    public init(id: String, from: String, subject: String, date: Date?, snippet: String, isUnread: Bool,
+                account: String? = nil, kind: EmailKind = .person, replyAddress: String? = nil) {
         self.account = account
+        self.kind = kind
+        self.replyAddress = replyAddress ?? EmailAddress.parse(from).address
         self.id = id
         self.from = from
         self.subject = subject
@@ -33,24 +44,52 @@ public struct EmailMessage: Sendable, Equatable {
     }
 }
 
+/// Splits "Jan Kowalski <jan@x.com>" into a display name and an address.
+public enum EmailAddress {
+    public static func parse(_ raw: String) -> (name: String, address: String) {
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let open = text.lastIndex(of: "<"), let close = text.lastIndex(of: ">"), open < close {
+            let address = String(text[text.index(after: open)..<close]).trimmingCharacters(in: .whitespaces)
+            var name = String(text[..<open]).trimmingCharacters(in: CharacterSet(charactersIn: " \"'"))
+            if name.isEmpty { name = address }
+            return (name, address)
+        }
+        return (text, text)
+    }
+}
+
 /// Read-only access to the user's mailbox. Implemented on the phone only; nothing here talks to our servers.
 public protocol EmailProviding: Sendable {
     func isConnected() async -> Bool
     func search(query: String, limit: Int) async throws -> [EmailSummary]
     func message(id: String) async throws -> EmailMessage
+    /// Every match, newest first, page by page. Nil when the provider cannot page.
+    func feed(query: String, account: String?) async -> MailFeed?
+    /// Unread messages in the inbox(es); nil when unknown.
+    func unreadCount() async -> Int?
+    /// Addresses of the connected mailboxes.
+    func accountLabels() async -> [String]
+}
+
+extension EmailProviding {
+    public func feed(query: String, account: String?) async -> MailFeed? { nil }
+    public func unreadCount() async -> Int? { nil }
+    public func accountLabels() async -> [String] { ["your mailbox"] }
 }
 
 /// Talks straight from the phone to Gmail's API with the `gmail.readonly` permission. The only host it will call is
 /// gmail.googleapis.com; message ids come from the model, so they are checked before they go into a URL.
-public struct GmailClient: EmailProviding {
+public struct GmailClient: EmailProviding, MailboxPaging {
     public typealias Transport = @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse)
 
     private let signedIn: @Sendable () async -> Bool
     private let accessToken: @Sendable () async throws -> String
     private let transport: Transport
-    private static let base = "https://gmail.googleapis.com/gmail/v1/users/me/messages"
+    private static let root = "https://gmail.googleapis.com/gmail/v1/users/me"
+    private static let base = root + "/messages"
     /// Memory only: no cookies and no cache, so email text is never written to this phone's disk by the networking layer.
     private static let session = URLSession(configuration: .ephemeral)
+    private static let headers = ["From", "Subject", "Date", "Reply-To", "List-Unsubscribe"]
 
     public init(
         isSignedIn: @escaping @Sendable () async -> Bool,
@@ -71,21 +110,47 @@ public struct GmailClient: EmailProviding {
     public func isConnected() async -> Bool { await signedIn() }
 
     public func search(query: String, limit: Int) async throws -> [EmailSummary] {
+        try await page(query: query, pageToken: nil, size: max(1, min(limit, 10))).items
+    }
+
+    /// One page of matches, newest first, with their headers. `size` is capped at 50 so a page stays quick.
+    public func page(query: String, pageToken: String?, size: Int) async throws -> EmailPage {
         var components = URLComponents(string: Self.base)!
-        components.queryItems = [
+        var items = [
             URLQueryItem(name: "q", value: query),
-            URLQueryItem(name: "maxResults", value: String(max(1, min(limit, 10)))),
+            URLQueryItem(name: "maxResults", value: String(max(1, min(size, 50)))),
         ]
+        if let pageToken { items.append(URLQueryItem(name: "pageToken", value: pageToken)) }
+        components.queryItems = items
         let list = try await get(components.url!)
         let ids = ((list["messages"] as? [[String: Any]]) ?? []).compactMap { $0["id"] as? String }
-        return try await withThrowingTaskGroup(of: (Int, EmailSummary?).self) { group in
-            for (index, id) in ids.enumerated() {
+        let summaries = try await withThrowingTaskGroup(of: (Int, EmailSummary?).self) { group in
+            var found: [(Int, EmailSummary)] = []
+            var next = 0
+            // Eight at a time: quick, and well inside Gmail's rate limit.
+            func launch() {
+                guard next < ids.count else { return }
+                let (index, id) = (next, ids[next])
+                next += 1
                 group.addTask { (index, try await summary(id: id)) }
             }
-            var found: [(Int, EmailSummary)] = []
-            for try await (index, item) in group { if let item { found.append((index, item)) } }
+            for _ in 0..<min(8, ids.count) { launch() }
+            for try await (index, item) in group {
+                if let item { found.append((index, item)) }
+                launch()
+            }
             return found.sorted { $0.0 < $1.0 }.map(\.1)
         }
+        return EmailPage(
+            items: summaries,
+            nextToken: list["nextPageToken"] as? String,
+            estimatedTotal: (list["resultSizeEstimate"] as? Int)
+        )
+    }
+
+    public func unreadCount() async -> Int? {
+        guard let url = URL(string: Self.root + "/labels/INBOX"), let label = try? await get(url) else { return nil }
+        return label["messagesUnread"] as? Int
     }
 
     public func message(id: String) async throws -> EmailMessage {
@@ -106,7 +171,7 @@ public struct GmailClient: EmailProviding {
         var components = URLComponents(string: "\(Self.base)/\(id)")!
         components.queryItems = [URLQueryItem(name: "format", value: format)]
         if format == "metadata" {
-            components.queryItems? += ["From", "Subject", "Date"].map { URLQueryItem(name: "metadataHeaders", value: $0) }
+            components.queryItems? += Self.headers.map { URLQueryItem(name: "metadataHeaders", value: $0) }
         }
         return components.url!
     }
@@ -140,14 +205,28 @@ public struct GmailClient: EmailProviding {
         guard let id = object["id"] as? String else { return nil }
         let payload = object["payload"] as? [String: Any] ?? [:]
         let millis = (object["internalDate"] as? String).flatMap(Double.init)
+        let labels = (object["labelIds"] as? [String]) ?? []
+        let from = header("From", in: payload) ?? ""
+        let replyTo = header("Reply-To", in: payload).map { EmailAddress.parse($0).address }
         return EmailSummary(
             id: id,
-            from: header("From", in: payload) ?? "",
+            from: from,
             subject: header("Subject", in: payload) ?? "(no subject)",
             date: millis.map { Date(timeIntervalSince1970: $0 / 1000) },
             snippet: GmailParsing.decodeEntities((object["snippet"] as? String) ?? ""),
-            isUnread: ((object["labelIds"] as? [String]) ?? []).contains("UNREAD")
+            isUnread: labels.contains("UNREAD"),
+            kind: kind(labels: labels, from: from, bulk: header("List-Unsubscribe", in: payload) != nil),
+            replyAddress: replyTo
         )
+    }
+
+    static func kind(labels: [String], from: String, bulk: Bool) -> EmailKind {
+        if labels.contains("CATEGORY_PROMOTIONS") { return .promotions }
+        if labels.contains("CATEGORY_SOCIAL") { return .social }
+        if labels.contains("CATEGORY_UPDATES") || labels.contains("CATEGORY_FORUMS") { return .updates }
+        let address = EmailAddress.parse(from).address.lowercased()
+        let automated = ["noreply", "no-reply", "donotreply", "do-not-reply", "notifications@", "newsletter", "mailer-daemon"].contains { address.contains($0) }
+        return (bulk || automated) ? .updates : .person
     }
 
     private static func header(_ name: String, in payload: [String: Any]) -> String? {

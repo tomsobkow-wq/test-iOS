@@ -6,9 +6,11 @@ public struct MultiEmailProvider: EmailProviding {
     public struct Account: Sendable {
         public let label: String
         public let provider: any EmailProviding
-        public init(label: String, provider: any EmailProviding) {
+        public let paging: (any MailboxPaging)?
+        public init(label: String, provider: any EmailProviding, paging: (any MailboxPaging)? = nil) {
             self.label = label
             self.provider = provider
+            self.paging = paging
         }
     }
 
@@ -47,6 +49,29 @@ public struct MultiEmailProvider: EmailProviding {
         if merged.isEmpty, let failure { throw failure }
         let ordered = merged.sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }
         return Array(ordered.prefix(max(1, min(limit, 10))))
+    }
+
+    /// The mailboxes (all, or those whose address contains `account`) that can page, as one newest-first stream.
+    public func feed(query: String, account: String?) async -> MailFeed? {
+        let all = await accounts()
+        let wanted = account?.trimmingCharacters(in: .whitespaces).lowercased()
+        let sources = all.enumerated().compactMap { position, candidate -> (position: Int, label: String, paging: any MailboxPaging)? in
+            if let wanted, !wanted.isEmpty, !candidate.label.lowercased().contains(wanted) { return nil }
+            return candidate.paging.map { (position: position, label: candidate.label, paging: $0) }
+        }
+        guard !sources.isEmpty else { return nil }
+        return MailFeed(sources: sources, query: query, labelled: all.count > 1)
+    }
+
+    public func accountLabels() async -> [String] { await accounts().map(\.label) }
+
+    public func unreadCount() async -> Int? {
+        var total = 0
+        var known = false
+        for account in await accounts() {
+            if let count = await account.provider.unreadCount() { total += count; known = true }
+        }
+        return known ? total : nil
     }
 
     public func message(id: String) async throws -> EmailMessage {
