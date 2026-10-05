@@ -12,7 +12,10 @@ const headers = { authorization: "Bearer test-token-0123456789", "content-type":
 before(async () => { await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve)); base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`; });
 after(() => server.close());
 
-const call = async (name: string, args: unknown) => (await fetch(`${base}/v1/tools/call`, { method: "POST", headers, body: JSON.stringify({ name, arguments: args }) })).json() as Promise<{ ok: boolean; content: string }>;
+const call = async (name: string, args: unknown, extra: Record<string, string> = {}) =>
+  (await fetch(`${base}/v1/tools/call`, { method: "POST", headers: { ...headers, ...extra }, body: JSON.stringify({ name, arguments: args }) })).json() as Promise<{ ok: boolean; content: string }>;
+const AU = { "x-country": "AU", "x-language": "en-AU", "x-currency": "aud" };
+const PL = { "x-country": "PL", "x-language": "pl", "x-currency": "PLN" };
 
 test("health is open, everything else needs the token", async () => {
   assert.equal((await fetch(`${base}/healthz`)).status, 200);
@@ -31,11 +34,17 @@ test("the app can discover the tools", async () => {
 
 test("a flight search works with city names and returns the facts", async () => {
   ctx.provider.priceMinor = 84_200;
-  const result = await call("search_flights", { origin: "Warszawa", destination: "Lizbona", depart_date: "2026-11-14" });
+  const result = await call("search_flights", { origin: "Warszawa", destination: "Lizbona", depart_date: "2026-11-14" }, PL);
   assert.equal(result.ok, true);
   assert.match(result.content, /WAW -> LIS/);
   assert.match(result.content, /842\.00 PLN/);
-  assert.equal(ctx.provider.queries.at(-1)?.currency, "PLN");
+  assert.equal(ctx.provider.queries.at(-1)?.currency, "PLN", "the phone's currency is the default");
+  const perth = await call("search_flights", { origin: "Perth", destination: "SYD", depart_date: "2026-11-14" }, AU);
+  assert.equal(perth.ok, true, perth.content);
+  assert.match(perth.content, /PER -> SYD/);
+  assert.equal(ctx.provider.queries.at(-1)?.currency, "AUD", "an Australian phone gets Australian dollars without saying so");
+  await call("search_flights", { origin: "Perth", destination: "SYD", depart_date: "2026-11-14", currency: "EUR" }, AU);
+  assert.equal(ctx.provider.queries.at(-1)?.currency, "EUR", "but the user can ask for another currency");
 });
 
 test("arguments may arrive as a JSON string, as models often send them", async () => {
@@ -90,4 +99,14 @@ test("with no flight key the tools say so plainly", async () => {
   assert.equal(answer.ok, false);
   assert.match(answer.content, /not set up on the server/);
   bare.close();
+});
+
+test("a locale header from the phone is read, and anything malformed is ignored", async () => {
+  const { localeFrom } = await import("../src/server.ts");
+  const req = (h: Record<string, string>) => ({ headers: h }) as never;
+  assert.deepEqual(localeFrom(req({ "x-country": "AU", "x-language": "en", "x-currency": "aud" })), { country: "au", language: "en", currency: "AUD" });
+  assert.deepEqual(localeFrom(req({ "x-country": "au" })), { country: "au", language: "en", currency: "AUD" }, "missing parts are filled in from the country");
+  assert.equal(localeFrom(req({ "x-country": "australia" })), undefined);
+  assert.equal(localeFrom(req({})), undefined);
+  assert.equal(localeFrom(req({ "x-country": "au", "x-language": "<script>", "x-currency": "dollars" }))?.language, "en");
 });

@@ -42,6 +42,26 @@ public enum BackendError: LocalizedError, Sendable, Equatable {
     }
 }
 
+/// The user's own country, language and currency, read from the phone. The server uses them whenever a request does not name another,
+/// so "find me a bike" searches the shops of wherever the user lives and prices come back in their money.
+public struct LocaleHints: Sendable, Equatable {
+    public let country: String?
+    public let language: String?
+    public let currency: String?
+
+    public init(country: String?, language: String?, currency: String?) {
+        self.country = country
+        self.language = language
+        self.currency = currency
+    }
+
+    public static var current: LocaleHints {
+        let locale = Locale.current
+        let language = Locale.preferredLanguages.first.flatMap { $0.split(separator: "-").first.map(String.init) }
+        return LocaleHints(country: locale.region?.identifier, language: language ?? locale.language.languageCode?.identifier, currency: locale.currency?.identifier)
+    }
+}
+
 public struct BackendClient: Sendable {
     public typealias Transport = @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse)
 
@@ -55,9 +75,11 @@ public struct BackendClient: Sendable {
 
     private let config: BackendConfig
     private let transport: Transport
+    private let hints: LocaleHints
 
-    public init(config: BackendConfig, transport: Transport? = nil) {
+    public init(config: BackendConfig, hints: LocaleHints = .current, transport: Transport? = nil) {
         self.config = config
+        self.hints = hints
         self.transport = transport ?? { request in
             var request = request
             request.timeoutInterval = 30
@@ -113,6 +135,9 @@ public struct BackendClient: Sendable {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("Bearer \(config.token)", forHTTPHeaderField: "Authorization")
+        if let country = hints.country { request.setValue(country, forHTTPHeaderField: "X-Country") }
+        if let language = hints.language { request.setValue(language, forHTTPHeaderField: "X-Language") }
+        if let currency = hints.currency { request.setValue(currency, forHTTPHeaderField: "X-Currency") }
         if let body {
             request.httpBody = body
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

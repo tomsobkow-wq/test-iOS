@@ -77,5 +77,12 @@ test("airports: codes, Polish and English city names, diacritics, unknowns", () 
   assert.deepEqual(resolveAirport("New York"), { code: "NYC" });
   assert.deepEqual(resolveAirport("Łódź"), { code: "LCJ" });
   const unknown = resolveAirport("Zielona Góra");
-  assert.ok("error" in unknown && /3-letter airport code/.test(unknown.error));
+  assert.ok("error" in unknown && /3-letter IATA airport code/.test(unknown.error));
+});
+
+test("Australian and other world cities resolve, and any 3-letter code is accepted as it is", () => {
+  for (const [name, code] of [["Perth", "PER"], ["Sydney", "SYD"], ["Gold Coast", "OOL"], ["Auckland", "AKL"], ["Singapore", "SIN"], ["perth", "PER"]] as const) {
+    assert.deepEqual(resolveAirport(name), { code }, name);
+  }
+  assert.deepEqual(resolveAirport("dps"), { code: "DPS" });
 });

@@ -88,4 +88,27 @@ final class RemoteToolsTests: XCTestCase {
         XCTAssertEqual(box.request?.httpMethod, "POST")
         XCTAssertEqual(box.request?.url?.path, "/v1/alerts/seen")
     }
+
+    func testEveryRequestCarriesThePhonesCountryLanguageAndCurrency() async throws {
+        let box = RequestBox()
+        let client = BackendClient(config: config, hints: LocaleHints(country: "AU", language: "en", currency: "AUD"), transport: { request in
+            box.set(request)
+            return (Data(#"{"ok":true,"content":"x"}"#.utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+        })
+        _ = try await client.call("search_products", argumentsJSON: #"{"query":"electric bike"}"#)
+        let request = try XCTUnwrap(box.request)
+        XCTAssertEqual(request.value(forHTTPHeaderField: "X-Country"), "AU")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "X-Language"), "en")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "X-Currency"), "AUD")
+    }
+
+    func testMissingHintsAreSimplyNotSent() async throws {
+        let box = RequestBox()
+        let client = BackendClient(config: config, hints: LocaleHints(country: nil, language: nil, currency: nil), transport: { request in
+            box.set(request)
+            return (Data(#"{"ok":true,"content":"x"}"#.utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!)
+        })
+        _ = try await client.call("search_news", argumentsJSON: "{}")
+        XCTAssertNil(box.request?.value(forHTTPHeaderField: "X-Country"))
+    }
 }

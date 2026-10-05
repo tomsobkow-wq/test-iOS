@@ -181,13 +181,16 @@ enum ApprovalText {
 
 extension ApprovalText {
     /// Plain-language question for the flight watch tools; the server's own description is written for the model.
+    /// The symbol for the money a price limit is in: the named country's, or the phone's own when none is named.
     private static func currencySymbol(country: String?) -> String {
-        switch (country ?? "pl").lowercased() {
-        case "pl": "zł"
-        case "us": "$"
-        case "gb", "uk": "£"
-        case "cz": "Kč"
-        default: "€"
+        guard let country, !country.isEmpty else { return Locale.current.currencySymbol ?? Locale.current.currency?.identifier ?? "" }
+        switch country.lowercased() {
+        case "pl": return "zł"
+        case "gb", "uk": return "£"
+        case "us", "au", "nz", "ca": return "$"
+        case "cz": return "Kč"
+        case "de", "fr", "es", "it", "nl", "at", "pt", "ie", "be", "fi", "gr": return "€"
+        default: return Locale(identifier: "en_\(country.uppercased())").currencySymbol ?? ""
         }
     }
 

@@ -157,7 +157,7 @@ function toolContext(extra: Partial<ToolContext> = {}): { ctx: ToolContext; shop
   const shopping = new FakeShopping(), news = new FakeNews();
   const ctx: ToolContext = {
     db: base.db, config: { ...base.config, maxWatches: 5 }, quota: base.quota, provider: undefined, shopping, news,
-    caches: { products: new TtlCache(600_000), news: new TtlCache(300_000) }, user: "default", now: () => NOW, ...extra,
+    caches: { products: new TtlCache(600_000), news: new TtlCache(300_000) }, defaults: { country: "pl", language: "pl", currency: "PLN" }, user: "default", now: () => NOW, ...extra,
   };
   return { ctx, shopping, news, limit: 5 };
 }
@@ -173,6 +173,35 @@ test("search_products answers from a cache the second time and filters by releva
   await tool("search_products").run({ query: "rower elektryczny", max_price: 5000 }, ctx);
   assert.equal(shopping.queries.length, 1, "the repeat was served from the cache");
   assert.equal(ctx.quota.used(NOW), 1, "and cost no second search");
+});
+
+test("an Australian phone searches Australian shops in dollars without being told", async () => {
+  const au = { country: "au", language: "en", currency: "AUD" };
+  const { ctx, shopping, news } = toolContext({ defaults: au });
+  shopping.offers = [offer("Electric bike 36V", 199_900, "Kogan", { currency: "AUD" })];
+  const text = await tool("search_products").run({ query: "electric bike", max_price: 2000 }, ctx);
+  assert.deepEqual([shopping.queries[0].country, shopping.queries[0].language], ["au", "en"]);
+  assert.match(text, /1999\.00 AUD \| Kogan/);
+  news.items = [item("Headline", "https://a/1")];
+  await tool("search_news").run({ query: "interest rates" }, ctx);
+  assert.deepEqual([news.queries[0].country, news.queries[0].language], ["au", "en"]);
+  const watch = await tool("watch_product_price").run({ query: "Dyson V15", max_price: 900 }, ctx);
+  assert.match(watch, /at or below 900\.00 AUD/);
+  const other = await tool("search_products").run({ query: "kielbasa", country: "pl", language: "pl" }, ctx);
+  assert.ok(other);
+  assert.deepEqual([shopping.queries.at(-1)?.country, shopping.queries.at(-1)?.language], ["pl", "pl"], "naming another country still works");
+});
+
+test("a bare dollar sign is the dollar of the shopper's own country", () => {
+  assert.equal(currencyFor("au", "$1,299.00"), "AUD");
+  assert.equal(currencyFor("nz", "$899"), "NZD");
+  assert.equal(currencyFor("ca", "$50"), "CAD");
+  assert.equal(currencyFor("us", "$20"), "USD");
+  assert.equal(currencyFor("au", "US$20"), "USD");
+  assert.equal(currencyFor("au", "A$1,299.00"), "AUD");
+  assert.equal(currencyFor("pl", "$20"), "USD", "a dollar price in a non-dollar country is US dollars");
+  assert.equal(currencyFor("au", ""), "AUD");
+  assert.equal(currencyFor("zz", ""), "USD");
 });
 
 test("search_news is cached and spends one search per topic", async () => {

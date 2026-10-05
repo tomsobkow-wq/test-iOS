@@ -5,7 +5,7 @@ import { openDb, type Db } from "./db.ts";
 import { TtlCache } from "./cache.ts";
 import { SerpApiFlights, type FlightProvider } from "./flights.ts";
 import { SerpApiNews, type NewsProvider } from "./news.ts";
-import { SerpApiShopping, type ProductProvider } from "./shopping.ts";
+import { SerpApiShopping, currencyFor, type ProductProvider } from "./shopping.ts";
 import { Quota } from "./quota.ts";
 import { startScheduler } from "./scheduler.ts";
 import { ToolFailure, tools, type ToolContext } from "./tools.ts";
@@ -47,10 +47,21 @@ function authorised(req: IncomingMessage, token: string): boolean {
   return given.length === wanted.length && timingSafeEqual(given, wanted);
 }
 
+/** The phone sends the user's own country, language and currency. Anything malformed is ignored, never trusted. */
+export function localeFrom(req: IncomingMessage): { country: string; language: string; currency: string } | undefined {
+  const header = (name: string) => {
+    const v = req.headers[name];
+    return (Array.isArray(v) ? v[0] : v)?.trim();
+  };
+  const country = header("x-country")?.toLowerCase(), language = header("x-language")?.toLowerCase(), currency = header("x-currency")?.toUpperCase();
+  if (!country || !/^[a-z]{2}$/.test(country)) return undefined;
+  return { country, language: language && /^[a-z]{2}$/.test(language) ? language : "en", currency: currency && /^[A-Z]{3}$/.test(currency) ? currency : currencyFor(country) };
+}
+
 export function createApp(deps: AppDeps): Server {
   const now = deps.now ?? Date.now;
   const caches = { products: new TtlCache<import("./shopping.ts").ProductOffer[]>(10 * 60_000), news: new TtlCache<import("./news.ts").NewsItem[]>(5 * 60_000) };
-  const context = (): ToolContext => ({ db: deps.db, config: deps.config, quota: deps.quota, provider: deps.provider, shopping: deps.shopping, news: deps.news, caches, user: USER, now });
+  const context = (req?: IncomingMessage): ToolContext => ({ db: deps.db, config: deps.config, quota: deps.quota, provider: deps.provider, shopping: deps.shopping, news: deps.news, caches, defaults: req ? localeFrom(req) : undefined, user: USER, now });
 
   return createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
@@ -73,7 +84,7 @@ export function createApp(deps: AppDeps): Server {
           args = raw as Record<string, unknown>;
         } catch { return send(res, 400, { ok: false, content: "arguments must be a JSON object" }); }
         try {
-          return send(res, 200, { ok: true, content: await tool.run(args, context()) });
+          return send(res, 200, { ok: true, content: await tool.run(args, context(req)) });
         } catch (error) {
           // Failures the user or model can fix are returned as text. Anything else is reported without internals.
           return send(res, 200, { ok: false, content: error instanceof ToolFailure || error instanceof Error && /watch|limit/i.test(error.message) ? error.message : "The tool failed on the server. Try again later." });

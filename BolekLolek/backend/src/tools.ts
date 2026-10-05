@@ -20,6 +20,8 @@ export interface ToolContext {
   news?: NewsProvider;
   /** Short-lived answers, so a topic many people ask about costs one search. */
   caches?: { products: TtlCache<ProductOffer[]>; news: TtlCache<NewsItem[]> };
+  /** The user's own country, language and currency, sent by the app from the phone. Used whenever a request does not name another. */
+  defaults?: { country: string; language: string; currency: string };
   user: string;
   now: () => number;
 }
@@ -64,28 +66,28 @@ function tripFrom(args: Record<string, unknown>, ctx: ToolContext): FlightQuery 
     if (returnDate < departDate) throw new ToolFailure("return_date is before depart_date.");
   }
   const adults = Math.min(9, Math.max(1, Math.round(num(args, "adults") ?? 1)));
-  const currency = (str(args, "currency") ?? "PLN").toUpperCase();
-  if (!/^[A-Z]{3}$/.test(currency)) throw new ToolFailure("currency must be a 3-letter code such as PLN or EUR.");
+  const currency = (str(args, "currency") ?? ctx.defaults?.currency ?? "USD").toUpperCase();
+  if (!/^[A-Z]{3}$/.test(currency)) throw new ToolFailure("currency must be a 3-letter code such as AUD, PLN or EUR.");
   return { origin: origin.code, destination: destination.code, departDate, returnDate, adults, currency };
 }
 
 const tripSchema = {
-  origin: { type: "string", description: "City or 3-letter airport code, e.g. Warszawa or WAW" },
-  destination: { type: "string", description: "City or 3-letter airport code, e.g. Lizbona or LIS" },
+  origin: { type: "string", description: "3-letter IATA airport code (you know them: PER Perth, SYD Sydney, WAW Warsaw, LHR London) or a city name" },
+  destination: { type: "string", description: "3-letter IATA airport code (you know them: MEL Melbourne, LIS Lisbon, JFK New York) or a city name" },
   depart_date: { type: "string", description: "YYYY-MM-DD, an exact date" },
   return_date: { type: "string", description: "YYYY-MM-DD, only for a round trip" },
   adults: { type: "integer" },
-  currency: { type: "string", description: "PLN by default" },
+  currency: { type: "string", description: "3-letter code; omit to use the user's own currency" },
 };
 
 const localeSchema = {
-  country: { type: "string", description: "Two letters, the user's country: pl, us, gb, de. Default pl." },
-  language: { type: "string", description: "Two letters, the language of the user's request: pl or en. Default pl." },
+  country: { type: "string", description: "Two letters. Omit it to use the user's own country (set by the phone); give it only when the user asks about another country, e.g. au, pl, us, gb." },
+  language: { type: "string", description: "Two letters. Omit it to use the user's own language; give it only when the user wants another language's results." },
 };
 
-function locale(args: Record<string, unknown>): { country: string; language: string } {
-  const country = (str(args, "country") ?? "pl").toLowerCase();
-  const language = (str(args, "language") ?? "pl").toLowerCase();
+function locale(args: Record<string, unknown>, ctx: ToolContext): { country: string; language: string } {
+  const country = (str(args, "country") ?? ctx.defaults?.country ?? "us").toLowerCase();
+  const language = (str(args, "language") ?? ctx.defaults?.language ?? "en").toLowerCase();
   if (!/^[a-z]{2}$/.test(country) || !/^[a-z]{2}$/.test(language)) throw new ToolFailure("country and language must be two letters, for example pl and pl, or us and en.");
   return { country, language };
 }
@@ -121,13 +123,13 @@ export const tools: ToolDef[] = [
   {
     name: "search_products",
     risk: "read",
-    description: "Find products to buy (Google Shopping) with prices from shops. Use for 'find me X under N'. Pass a short product query, the country and language of the user (pl/pl for Polish), and max_price in that country's currency when the user gave a budget.",
+    description: "Find products to buy (Google Shopping) with prices from shops, in the user's own country unless they name another. Use for 'find me X under N'. Pass a short product query and max_price in the user's currency when they gave a budget.",
     parameters: { type: "object", properties: { ...localeSchema, query: { type: "string", description: "What to find, e.g. rower elektryczny" }, max_price: { type: "number" }, min_price: { type: "number" } }, required: ["query"] },
     async run(args, ctx) {
       if (!ctx.shopping) throw new ToolFailure("Product search is not set up on the server yet (no SerpApi key). Tell the user.");
       const query = str(args, "query");
       if (!query) throw new ToolFailure("query is required: what the user wants to find.");
-      const { country, language } = locale(args);
+      const { country, language } = locale(args, ctx);
       const q = { query: query.slice(0, 120), country, language, maxPriceMajor: num(args, "max_price"), minPriceMajor: num(args, "min_price") };
       const key = JSON.stringify(q);
       let offers = ctx.caches?.products.get(key, ctx.now());
@@ -149,9 +151,9 @@ export const tools: ToolDef[] = [
       const query = str(args, "query");
       const maxPrice = num(args, "max_price");
       if (!query || !maxPrice) throw new ToolFailure("query and max_price are required: what to watch and the price at or below which the user wants an alert.");
-      const { country, language } = locale(args);
+      const { country, language } = locale(args, ctx);
       const everyHours = Math.min(168, Math.max(6, Math.round(num(args, "every_hours") ?? ctx.config.defaultCheckEveryHours)));
-      const currency = currencyFor(country);
+      const currency = ctx.defaults && country === ctx.defaults.country ? ctx.defaults.currency : currencyFor(country);
       const watch = createTopicWatch(ctx.db, ctx.user, { kind: "product", query: query.slice(0, 120), country, language, currency, thresholdMinor: Math.round(maxPrice * 100), everyHours }, ctx.now(), ctx.config.maxWatches);
       return `Watching ${describeTopicWatch(watch)}. This uses about ${searchesPerMonth(everyHours)} of the ${ctx.quota.limit} searches available each month. The user will get a message here when the cheapest matching offer reaches ${money(watch.thresholdMinor ?? 0, currency)} or less.`;
     },
@@ -159,13 +161,13 @@ export const tools: ToolDef[] = [
   {
     name: "search_news",
     risk: "read",
-    description: "Find the latest news headlines on a topic (Google News), newest first, with the outlet and time of each. Pass the user's country and language (pl/pl for Polish, us/en for English). Summarise only what the headlines say and name the outlets.",
+    description: "Find the latest news headlines on a topic (Google News), newest first, with the outlet and time of each. Results are for the user's own country unless they name another. Summarise only what the headlines say and name the outlets.",
     parameters: { type: "object", properties: { ...localeSchema, query: { type: "string", description: "Topic, e.g. war in Ukraine" } }, required: ["query"] },
     async run(args, ctx) {
       if (!ctx.news) throw new ToolFailure("News search is not set up on the server yet (no SerpApi key). Tell the user.");
       const query = str(args, "query");
       if (!query) throw new ToolFailure("query is required: the news topic.");
-      const { country, language } = locale(args);
+      const { country, language } = locale(args, ctx);
       const q = { query: query.slice(0, 120), country, language };
       const key = JSON.stringify(q);
       let items = ctx.caches?.news.get(key, ctx.now());
@@ -186,7 +188,7 @@ export const tools: ToolDef[] = [
       if (!ctx.news) throw new ToolFailure("News watching is not set up on the server yet (no SerpApi key). Tell the user.");
       const query = str(args, "query");
       if (!query) throw new ToolFailure("query is required: the news topic to follow.");
-      const { country, language } = locale(args);
+      const { country, language } = locale(args, ctx);
       const everyHours = Math.min(48, Math.max(3, Math.round(num(args, "every_hours") ?? 6)));
       const watch = createTopicWatch(ctx.db, ctx.user, { kind: "news", query: query.slice(0, 120), country, language, everyHours }, ctx.now(), ctx.config.maxWatches);
       return `Following ${describeTopicWatch(watch)}. This uses about ${searchesPerMonth(everyHours)} of the ${ctx.quota.limit} searches available each month. The user will get a message here when new headlines appear.`;

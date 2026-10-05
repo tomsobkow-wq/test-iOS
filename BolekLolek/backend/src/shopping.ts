@@ -5,7 +5,7 @@ import { money } from "./flights.ts";
 
 export interface ProductQuery {
   query: string;
-  country: string;       // two letters, "pl"
+  country: string;       // two letters, the shopper's country
   language: string;      // "pl", "en"
   minPriceMajor?: number;
   maxPriceMajor?: number;
@@ -22,16 +22,24 @@ export interface ProductOffer {
   productId?: string;
 }
 
-const CURRENCY_BY_COUNTRY: Record<string, string> = { pl: "PLN", us: "USD", gb: "GBP", uk: "GBP", de: "EUR", fr: "EUR", es: "EUR", it: "EUR", nl: "EUR", ie: "EUR", at: "EUR", pt: "EUR", cz: "CZK" };
+const CURRENCY_BY_COUNTRY: Record<string, string> = {
+  pl: "PLN", us: "USD", gb: "GBP", uk: "GBP", au: "AUD", nz: "NZD", ca: "CAD", sg: "SGD", hk: "HKD", ie: "EUR", de: "EUR", fr: "EUR", es: "EUR",
+  it: "EUR", nl: "EUR", at: "EUR", pt: "EUR", be: "EUR", fi: "EUR", gr: "EUR", cz: "CZK", se: "SEK", no: "NOK", dk: "DKK", ch: "CHF", hu: "HUF",
+  ro: "RON", jp: "JPY", in: "INR", br: "BRL", mx: "MXN", za: "ZAR", ae: "AED", tr: "TRY", kr: "KRW", cn: "CNY",
+};
+const DOLLAR_CURRENCIES = new Set(["USD", "AUD", "NZD", "CAD", "SGD", "HKD", "MXN"]);
 
+/** The currency of a price. Marks like "A$" or "US$" win; a bare "$" is the dollar of the shopper's own country. */
 export function currencyFor(country: string, priceText?: string): string {
   const text = priceText ?? "";
-  if (/zł|PLN/i.test(text)) return "PLN";
-  if (/€|EUR/i.test(text)) return "EUR";
-  if (/£|GBP/i.test(text)) return "GBP";
-  if (/Kč|CZK/i.test(text)) return "CZK";
-  if (/\$|USD/i.test(text)) return "USD";
-  return CURRENCY_BY_COUNTRY[country.toLowerCase()] ?? "USD";
+  const explicit: Array<[RegExp, string]> = [
+    [/\bAU?\$|AUD/i, "AUD"], [/\bNZ\$|NZD/i, "NZD"], [/\bCA\$|\bC\$|CAD/i, "CAD"], [/\bUS\$|USD/i, "USD"], [/\bHK\$|HKD/i, "HKD"], [/\bS\$|SGD/i, "SGD"],
+    [/zł|PLN/i, "PLN"], [/€|EUR/i, "EUR"], [/£|GBP/i, "GBP"], [/Kč|CZK/i, "CZK"], [/CHF/i, "CHF"], [/¥|JPY/i, "JPY"], [/₹|INR/i, "INR"],
+  ];
+  for (const [pattern, code] of explicit) if (pattern.test(text)) return code;
+  const home = CURRENCY_BY_COUNTRY[country.toLowerCase()] ?? "USD";
+  if (/\$/.test(text)) return DOLLAR_CURRENCIES.has(home) ? home : "USD";
+  return home;
 }
 
 export function serpApiShoppingURL(q: ProductQuery, apiKey: string): string {
