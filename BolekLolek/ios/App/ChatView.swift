@@ -28,7 +28,7 @@ struct ChatView: View {
                             SetupBubble(setup: setup, accent: viewModel.mode.accent)
                         }
                         ForEach(viewModel.visibleMessages) { message in
-                            Bubble(text: Text(verbatim: message.text), isMine: message.role == .user, accent: viewModel.mode.accent)
+                            Bubble(text: message.role == .user ? Text(verbatim: message.text) : Text.formatted(message.text), isMine: message.role == .user, accent: viewModel.mode.accent)
                         }
                         if viewModel.mode == .lolek, !viewModel.isWorking, let offer = handoff?.current {
                             HandoffButton { onAskBolek?(offer.request) }
@@ -44,7 +44,7 @@ struct ChatView: View {
                             if viewModel.streamingText.isEmpty {
                                 TypingBubble()
                             } else {
-                                Bubble(text: Text(verbatim: viewModel.streamingText), isMine: false, accent: viewModel.mode.accent)
+                                Bubble(text: Text.formatted(viewModel.streamingText), isMine: false, accent: viewModel.mode.accent)
                             }
                         }
                         if let pending = viewModel.approvals.pending {
@@ -76,6 +76,15 @@ struct ChatView: View {
 
     private func scrollToBottom(_ proxy: ScrollViewProxy) {
         withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom", anchor: .bottom) }
+    }
+}
+
+extension Text {
+    /// Bolek and Lolek write **bold** and lists in Markdown; show them formatted, keeping line breaks.
+    static func formatted(_ markdown: String) -> Text {
+        let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        if let attributed = try? AttributedString(markdown: markdown, options: options) { return Text(attributed) }
+        return Text(verbatim: markdown)
     }
 }
 
@@ -200,6 +209,7 @@ struct Composer: View {
                 .padding(4)
                 .disabled(!viewModel.canSend)
                 .accessibilityLabel(Text("Send"))
+                .accessibilityIdentifier("send-button")
             }
             .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(Color(.systemGray4), lineWidth: 1))
         }
