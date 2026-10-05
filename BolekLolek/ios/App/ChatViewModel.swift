@@ -64,14 +64,18 @@ final class ChatViewModel {
         }
     }
 
+    /// What the chat shows. Raw tool results (transaction lists, email text) stay out of sight: the assistant's answer
+    /// carries what matters. The one exception is a turn that ended on a tool result with no answer after it.
     var visibleMessages: [ChatMessage] {
-        messages.filter { message in
+        let lastIsTool = messages.last?.role == .tool && !isWorking
+        return messages.enumerated().filter { index, message in
             switch message.role {
             case .system: false
             case .assistant: !message.text.isEmpty
-            case .user, .tool: true
+            case .user: true
+            case .tool: lastIsTool && index == messages.count - 1
             }
-        }
+        }.map(\.element)
     }
 
     var actionCount: Int {
