@@ -17,11 +17,24 @@ public struct BackendAlert: Codable, Sendable, Equatable, Identifiable {
     public let id: Int
     public let title: String
     public let body: String
+    /// Pages behind the alert (for a watched search: the new results), shown as buttons under the message.
+    public let links: [SourceLink]
 
-    public init(id: Int, title: String, body: String) {
+    public init(id: Int, title: String, body: String, links: [SourceLink] = []) {
         self.id = id
         self.title = title
         self.body = body
+        self.links = links
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, title, body, links }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        body = try container.decode(String.self, forKey: .body)
+        links = SourceLink.displayable((try? container.decodeIfPresent([SourceLink].self, forKey: .links)) ?? [])
     }
 
     /// The text shown as a message from Bolek.
@@ -110,13 +123,18 @@ public struct BackendClient: Sendable {
 
     /// Returns the text the model should read, whether the call worked or the server explained why not.
     public func call(_ name: String, argumentsJSON: String) async throws -> String {
-        struct Reply: Decodable { let ok: Bool; let content: String }
+        try await callWithSources(name, argumentsJSON: argumentsJSON).content
+    }
+
+    /// Like `call`, also returning the pages the answer is based on (already limited to safe https links).
+    public func callWithSources(_ name: String, argumentsJSON: String) async throws -> (content: String, sources: [SourceLink]) {
+        struct Reply: Decodable { let ok: Bool; let content: String; let sources: [SourceLink]? }
         let arguments = (try? JSONSerialization.jsonObject(with: Data(argumentsJSON.utf8))) ?? [String: Any]()
         let body = try JSONSerialization.data(withJSONObject: ["name": name, "arguments": arguments])
         let data = try await send("v1/tools/call", method: "POST", body: body)
         let reply = try JSONDecoder().decode(Reply.self, from: data)
         if !reply.ok { throw ToolError(reply.content) }
-        return reply.content
+        return (reply.content, SourceLink.displayable(reply.sources ?? []))
     }
 
     public func alerts(since id: Int) async throws -> [BackendAlert] {
@@ -167,8 +185,10 @@ public struct RemoteTool: Tool {
     public let tier: ToolTier = .bolek
     public let risk: ToolRisk
     private let client: BackendClient
+    private let sources: SourceCollector?
 
-    public init(spec: BackendClient.RemoteSpec, client: BackendClient) {
+    public init(spec: BackendClient.RemoteSpec, client: BackendClient, sources: SourceCollector? = nil) {
+        self.sources = sources
         name = spec.name
         // Server descriptions are English; Bolek is a large model and reads them fine in either conversation.
         description = LocalizedText(en: spec.description, pl: spec.description)
@@ -180,7 +200,9 @@ public struct RemoteTool: Tool {
 
     public func run(argumentsJSON: String) async throws -> String {
         do {
-            return try await client.call(name, argumentsJSON: argumentsJSON)
+            let reply = try await client.callWithSources(name, argumentsJSON: argumentsJSON)
+            sources?.add(reply.sources)
+            return reply.content
         } catch let error as BackendError {
             throw ToolError(error.errorDescription ?? "The Bolek server failed.")
         }
@@ -188,8 +210,8 @@ public struct RemoteTool: Tool {
 
     /// Fetches the server's tools. An unreachable or unauthorised server yields none rather than an error,
     /// so Bolek still chats; it just cannot search flights.
-    public static func discover(client: BackendClient) async -> [RemoteTool] {
+    public static func discover(client: BackendClient, sources: SourceCollector? = nil) async -> [RemoteTool] {
         guard let specs = try? await client.tools() else { return [] }
-        return specs.map { RemoteTool(spec: $0, client: client) }
+        return specs.map { RemoteTool(spec: $0, client: client, sources: sources) }
     }
 }

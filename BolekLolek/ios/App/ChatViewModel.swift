@@ -24,6 +24,10 @@ final class ChatViewModel {
     /// "Reading your file…" while a document is being taken in.
     private(set) var importStatus: String?
     let documents: DocumentSupport?
+    /// Pages each answer is based on, by message id. Drawn as buttons under the answer; never part of the model's text.
+    private(set) var sources: [UUID: [SourceLink]] = [:]
+    /// Tools report here during a turn (Bolek's server tools); the turn's links go to its answer.
+    let sourceCollector = SourceCollector()
 
     private let session: AgentSession
     private let isOnline: (@MainActor () -> Bool)?
@@ -58,9 +62,12 @@ final class ChatViewModel {
     }
 
     /// Something Bolek found while the app was closed, such as a fare drop. Shown as Bolek's own message.
-    func receive(notice: String) {
+    func receive(notice: String, links: [SourceLink] = []) {
         Task {
-            await session.append(ChatMessage(role: .assistant, text: notice))
+            let message = ChatMessage(role: .assistant, text: notice)
+            await session.append(message)
+            let shown = SourceLink.displayable(links)
+            if !shown.isEmpty { sources[message.id] = shown }
             messages = await session.transcript
         }
     }
@@ -106,6 +113,7 @@ final class ChatViewModel {
         isWorking = true
         streamingText = ""
         willSend?(text)
+        sourceCollector.reset()
         // Shown right away; replaced by the session transcript when the turn ends.
         messages.append(ChatMessage(role: .user, text: text))
 
@@ -129,9 +137,17 @@ final class ChatViewModel {
                 errorText = error.localizedDescription
             }
             messages = await session.transcript
+            attachSources()
             streamingText = ""
             isWorking = false
         }
+    }
+
+    /// Puts the turn's links under its final answer (the last assistant message that has text).
+    private func attachSources() {
+        let links = sourceCollector.take()
+        guard !links.isEmpty, let answer = messages.last(where: { $0.role == .assistant && !$0.text.isEmpty }) else { return }
+        sources[answer.id] = links
     }
 
     // MARK: Documents

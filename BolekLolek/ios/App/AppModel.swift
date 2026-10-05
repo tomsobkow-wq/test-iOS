@@ -167,11 +167,11 @@ final class AppModel {
         let client = BackendClient(config: config)
         Task { [bolek] in
             defer { connecting = false }
-            let tools = await RemoteTool.discover(client: client)
+            let tools = await RemoteTool.discover(client: client, sources: bolek.sourceCollector)
             bolek.register(tools: tools)
             guard !tools.isEmpty, let alerts = try? await client.alerts(since: BackendSettings.lastSeenAlertID),
                   let newest = alerts.map(\.id).max() else { return }
-            for alert in alerts { bolek.receive(notice: alert.message) }
+            for alert in alerts { bolek.receive(notice: alert.message, links: alert.links) }
             BackendSettings.lastSeenAlertID = newest
             try? await client.markAlertsSeen(upTo: newest)
         }

@@ -1111,6 +1111,16 @@
         }
       }
     },
+    "Check the web for new results for “%@”%@ from time to time and alert you?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprawdzać co jakiś czas w internecie nowe wyniki dla „%@”%@ i powiadamiać Cię?"
+          }
+        }
+      }
+    },
     "Stop watching %@?": {
       "localizations": {
         "pl": {

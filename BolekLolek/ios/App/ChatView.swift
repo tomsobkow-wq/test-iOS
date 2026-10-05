@@ -31,6 +31,9 @@ struct ChatView: View {
                         }
                         ForEach(viewModel.visibleMessages) { message in
                             Bubble(text: message.role == .user ? Text(verbatim: message.text) : Text.formatted(message.text), isMine: message.role == .user, accent: viewModel.mode.accent)
+                            if let links = viewModel.sources[message.id], message.role == .assistant {
+                                SourceChips(links: links, accent: viewModel.mode.accent)
+                            }
                         }
                         if viewModel.mode == .lolek, !viewModel.isWorking, let offer = handoff?.current {
                             HandoffButton { onAskBolek?(offer.request) }
@@ -114,6 +117,39 @@ struct Bubble: View {
                 .background(isMine ? accent : Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 19))
                 .accessibilityIdentifier(isMine ? "bubble-user" : "bubble-assistant")
             if !isMine { Spacer(minLength: 56) }
+        }
+    }
+}
+
+/// The pages an answer is based on, as buttons that open in Safari. Drawn by the app from checked https links,
+/// so the model cannot disguise a destination; opening happens only when the user taps.
+struct SourceChips: View {
+    let links: [SourceLink]
+    let accent: Color
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(links, id: \.url) { link in
+                    Button {
+                        if let url = link.openURL { openURL(url) }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "arrow.up.right").font(.system(size: 11, weight: .semibold))
+                            Text(verbatim: link.label).font(.system(size: 14, weight: .medium)).lineLimit(1)
+                            Text(verbatim: link.title).font(.system(size: 14)).foregroundStyle(.secondary).lineLimit(1).frame(maxWidth: 160, alignment: .leading)
+                        }
+                        .foregroundStyle(accent)
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .background(accent.opacity(0.1), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("source-chip")
+                    .accessibilityLabel(Text(verbatim: "\(link.label): \(link.title)"))
+                }
+            }
+            .padding(.horizontal, 2)
         }
     }
 }
@@ -229,6 +265,10 @@ extension ApprovalText {
         case "watch_news":
             guard let query = text("query") else { return nil }
             return String(localized: "Follow the news on “\(query)” and alert you to new headlines?")
+        case "watch_web_search":
+            guard let query = text("query") else { return nil }
+            let place = text("location").map { " near \($0)" } ?? ""
+            return String(localized: "Check the web for new results for “\(query)”\(place) from time to time and alert you?")
         case "stop_watch", "stop_flight_watch":
             guard let id = text("id") else { return nil }
             return String(localized: "Stop watching \(id)?")

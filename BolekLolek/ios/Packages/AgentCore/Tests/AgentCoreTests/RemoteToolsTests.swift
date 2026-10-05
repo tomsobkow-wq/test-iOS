@@ -111,4 +111,41 @@ final class RemoteToolsTests: XCTestCase {
         _ = try await client.call("search_news", argumentsJSON: "{}")
         XCTAssertNil(box.request?.value(forHTTPHeaderField: "X-Country"))
     }
+
+    func testSourcesComeBackWithTheAnswerAndOnlySafeLinksSurvive() async throws {
+        let json = #"{"ok":true,"content":"found","sources":[{"title":"2021 R18","site":"Bikesales","url":"https://www.bikesales.com.au/r18"},{"title":"x","site":"Plain","url":"http://plain.example/a"},{"title":"x","site":"Creds","url":"https://u:p@evil.example/"},{"title":"x","site":"Local","url":"https://localhost/"},{"title":"dup","site":"Bikesales","url":"https://www.bikesales.com.au/r18"},{"title":"x","site":"Js","url":"javascript:alert(1)"}]}"#
+        let collector = SourceCollector()
+        let tool = RemoteTool(spec: .init(name: "web_search", description: "d", risk: "read", parametersSchema: "{}"), client: client(json: json), sources: collector)
+        let text = try await tool.run(argumentsJSON: "{}")
+        XCTAssertEqual(text, "found")
+        XCTAssertEqual(collector.take().map(\.url), ["https://www.bikesales.com.au/r18"])
+        XCTAssertTrue(collector.take().isEmpty, "taking starts over")
+    }
+
+    func testOlderServersWithoutSourcesStillWork() async throws {
+        let reply = try await client(json: #"{"ok":true,"content":"x"}"#).callWithSources("web_search", argumentsJSON: "{}")
+        XCTAssertEqual(reply.content, "x")
+        XCTAssertTrue(reply.sources.isEmpty)
+    }
+
+    func testAlertLinksDecodeAndBadOnesAreDropped() throws {
+        let json = #"{"id":9,"title":"New results: BMW R18","body":"1 new result.","links":[{"title":"2023 R18","site":"Gumtree","url":"https://gumtree.example/3"},{"title":"bad","site":"Evil","url":"http://evil.example/"}]}"#
+        let alert = try JSONDecoder().decode(BackendAlert.self, from: Data(json.utf8))
+        XCTAssertEqual(alert.links, [SourceLink(title: "2023 R18", site: "Gumtree", url: "https://gumtree.example/3")])
+        let plain = try JSONDecoder().decode(BackendAlert.self, from: Data(#"{"id":1,"title":"t","body":"b"}"#.utf8))
+        XCTAssertTrue(plain.links.isEmpty)
+    }
+
+    func testOnlyRealHttpsSitesCanBeOpened() {
+        func openable(_ url: String) -> Bool { SourceLink(title: "t", site: "s", url: url).openURL != nil }
+        XCTAssertTrue(openable("https://www.carsales.com.au/cars/x?id=1"))
+        XCTAssertFalse(openable("http://www.carsales.com.au/"))
+        XCTAssertFalse(openable("https://localhost/"))
+        XCTAssertFalse(openable("https://192.168.1.5/"))
+        XCTAssertFalse(openable("https://user@site.example/"))
+        XCTAssertFalse(openable("https://exa mple.com/"))
+        XCTAssertFalse(openable("mailto:a@b.example"))
+        XCTAssertFalse(openable("tel:123"))
+        XCTAssertEqual(SourceLink(title: "t", site: "", url: "https://a.example/x").label, "a.example")
+    }
 }

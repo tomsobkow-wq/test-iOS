@@ -681,5 +681,7 @@ final class BolekFlowUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 8)
         let seconds = ask("find me bmw r18 in perth", timeout: 200)
         shot("150-r18-perth \(Int(seconds))s")
+        // The pages used are drawn by the app as buttons (never tapped here: that would leave the app).
+        XCTAssertTrue(app.buttons["source-chip"].firstMatch.waitForExistence(timeout: 5), "source buttons under the answer")
     }
 }
