@@ -64,6 +64,17 @@ final class EventKitCalendar: CalendarProviding, @unchecked Sendable {
         }
     }
 
+    #if DEBUG
+    /// Test helper: removes the events a test run created (titles starting "Lolek test").
+    func removeTestEvents() async {
+        guard (try? await store.requestFullAccessToEvents()) == true else { return }
+        let from = Date().addingTimeInterval(-86400 * 30), to = Date().addingTimeInterval(86400 * 800)
+        for event in store.events(matching: store.predicateForEvents(withStart: from, end: to, calendars: nil)) where event.title?.hasPrefix("Lolek test") == true {
+            try? store.remove(event, span: .thisEvent)
+        }
+    }
+    #endif
+
     func events(from: Date, to: Date) async throws -> [CalendarEventInfo] {
         try await authorize()
         let predicate = store.predicateForEvents(withStart: from, end: to, calendars: nil)
@@ -157,6 +168,15 @@ final class AppleWeather: WeatherProviding, @unchecked Sendable {
             precipitationChancePercent: today.map { Int(($0.precipitationChance * 100).rounded()) },
             note: note
         )
+    }
+}
+
+/// The current position for weather: one location fix (asking permission the first time) and, if possible, the town's name.
+enum SystemLocation {
+    static func current() async throws -> (latitude: Double, longitude: Double, name: String?) {
+        let location = try await OneShotLocation().current()
+        let name = (try? await CLGeocoder().reverseGeocodeLocation(location).first?.locality)
+        return (location.coordinate.latitude, location.coordinate.longitude, name)
     }
 }
 

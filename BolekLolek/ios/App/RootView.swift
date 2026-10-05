@@ -34,7 +34,7 @@ extension AgentMode {
 
     var intro: LocalizedStringKey {
         switch self {
-        case .lolek: "Hi, I'm Lolek. I run only on this iPhone and never talk to any server. Ask me about the weather, set an alarm, or text a friend."
+        case .lolek: "Hi, I'm Lolek. I run on this iPhone, and your chats and documents never leave it. Ask me about the weather, set an alarm, or text a friend."
         case .bolek: "Hi, I'm Bolek, the full agent. Ask me anything, or tell me what to do on your phone."
         }
     }

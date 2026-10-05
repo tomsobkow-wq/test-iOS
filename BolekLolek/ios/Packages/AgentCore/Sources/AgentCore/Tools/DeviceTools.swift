@@ -24,6 +24,7 @@ public enum DeviceToolbox {
             FindContactTool(contacts: services.contacts),
             TextContactTool(contacts: services.contacts, opener: services.urlOpener),
             CallContactTool(contacts: services.contacts, opener: services.urlOpener),
+        ] + MapsToolbox.tools(opener: services.urlOpener) + [
             LogExpenseTool(store: services.spending, clock: clock),
             SpendingSummaryTool(store: services.spending, clock: clock),
             SetSpendingTrackingTool(store: services.spending),

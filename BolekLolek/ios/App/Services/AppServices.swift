@@ -18,7 +18,7 @@ enum AppServices {
     }()
 
     static let device = DeviceServices(
-        weather: AppleWeather(),
+        weather: OpenMeteoWeather(currentLocation: { try await SystemLocation.current() }),
         calendar: EventKitCalendar(),
         contacts: SystemContacts(),
         notifications: LocalNotifications(),

@@ -67,6 +67,7 @@ final class AppModel {
         #if DEBUG
         // Screenshot helpers: BOLEK_START_MODE=bolek, BOLEK_DEMO_HANDOFF=1.
         if ProcessInfo.processInfo.environment["BOLEK_START_MODE"] == "bolek" { mode = .bolek }
+        if ProcessInfo.processInfo.environment["BOLEK_DEBUG_CLEAN_TEST_EVENTS"] == "1" { Task { await EventKitCalendar().removeTestEvents() } }
         // Test helper: BOLEK_DEBUG_IMPORT=<file in the app's Documents folder> adds that file as if picked from Files.
         if let name = ProcessInfo.processInfo.environment["BOLEK_DEBUG_IMPORT"],
            let documentsFolder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first,
