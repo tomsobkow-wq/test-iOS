@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { describeWeb, isPrivateAddress, parseWeb, readPage, readableText, serpApiWebURL, type WebResult } from "../src/web.ts";
+import { describeWeb, ipv6ToBigInt, isPrivateAddress, makeSafeLookup, parseWeb, readPage, readableText, serpApiWebURL, type WebResult } from "../src/web.ts";
 import { TtlCache } from "../src/cache.ts";
 import { tools, type ToolContext } from "../src/tools.ts";
 import { NOW, setup } from "./helpers.ts";
@@ -29,6 +29,7 @@ test("the text for the model reports snippets only, names the site, and prints n
   assert.match(text, /1\. Bikesales: R18 \| 2021 BMW R 18\. \$12,990\./);
   assert.match(text, /must be confirmed on the site/);
   assert.match(text, /can be out of date/);
+  assert.match(text, /call read_page on the two or three most relevant results BEFORE answering/);
   assert.ok(!text.includes("https://"));
 });
 
@@ -124,4 +125,61 @@ test("a page that tells the model what to do is just text, and a blocked site is
   const blocked = ctxWith(web, { pages: { resolve: publicHost, fetchPage: async () => ({ status: 403, type: "text/html", body: "px-captcha" }) } });
   await tool("web_search").run({ query: "bike" }, blocked);
   await assert.rejects(tool("read_page").run({ result: 1 }, blocked), /Bikesales: This site blocks automated reading/);
+});
+
+test("every way of writing a private address is refused, including IPv4 hidden inside IPv6", () => {
+  const refused = [
+    "127.0.0.1", "127.255.255.254", "10.0.0.1", "192.168.0.1", "172.20.1.1", "169.254.169.254", "0.0.0.0", "100.64.0.1", "192.0.2.10", "198.18.0.1", "203.0.113.5", "224.0.0.1", "255.255.255.255",
+    "::1", "::", "0:0:0:0:0:0:0:1", "FE80::1", "fe80::1%en0", "fec0::1", "fc00::1", "FD12:3456::1", "ff02::1", "2001:db8::1", "2001::1",
+    "::ffff:127.0.0.1", "::ffff:7f00:1", "::FFFF:7F00:0001", "0:0:0:0:0:ffff:7f00:1", "::ffff:a9fe:a9fe", "::ffff:10.1.2.3", "::ffff:c0a8:101", "::ffff:172.16.0.1",
+    "64:ff9b::7f00:1", "64:ff9b::169.254.169.254", "2002:7f00:1::", "2002:a9fe:a9fe::1", "::7f00:1", "::127.0.0.1",
+    "not an address", "", "1.2.3", "[::1]",
+  ];
+  for (const a of refused) assert.equal(isPrivateAddress(a), true, `should refuse ${a}`);
+  const allowed = ["93.184.216.34", "8.8.8.8", "1.1.1.1", "172.32.0.1", "172.15.255.255", "100.63.0.1", "2606:4700:4700::1111", "2a00:1450:4001:81c::200e", "::ffff:8.8.8.8", "::ffff:808:808", "64:ff9b::808:808", "2002:808:808::1"];
+  for (const a of allowed) assert.equal(isPrivateAddress(a), false, `should allow ${a}`);
+});
+
+test("IPv6 text is read into the right number", () => {
+  assert.equal(ipv6ToBigInt("::1"), 1n);
+  assert.equal(ipv6ToBigInt("::ffff:127.0.0.1"), 0xffff7f000001n);
+  assert.equal(ipv6ToBigInt("::ffff:7f00:1"), 0xffff7f000001n);
+  assert.equal(ipv6ToBigInt("1:2:3:4:5:6:7:8"), 0x00010002000300040005000600070008n);
+  assert.equal(ipv6ToBigInt("1::2:3"), 0x00010000000000000000000000020003n);
+  assert.equal(ipv6ToBigInt("1:2:3:4:5:6:7:8:9"), null);
+  assert.equal(ipv6ToBigInt("1::2::3"), null);
+  assert.equal(ipv6ToBigInt("zzzz::1"), null);
+});
+
+test("the connection's own DNS answer is checked, so a host cannot answer 'public' once and 'private' next", async () => {
+  // A rebinding host: the first question gets a public address, every later one a private address.
+  let asked = 0;
+  const rebinding = async () => (++asked === 1 ? ["93.184.216.34"] : ["127.0.0.1"]);
+  const lookup = makeSafeLookup(rebinding);
+  const answer = (hostname: string) => new Promise<{ err: Error | null; address?: unknown }>((resolve) => lookup(hostname, {}, (err, address) => resolve({ err, address })));
+  const first = await answer("rebind.example");
+  assert.equal(first.err, null);
+  assert.equal(first.address, "93.184.216.34");
+  const second = await answer("rebind.example");
+  assert.match(second.err?.message ?? "", /not allowed/, "the answer used for the connection is itself checked");
+  assert.equal(second.address, undefined);
+
+  // One private address among public ones is enough to refuse (no picking around it), and the all-addresses form is checked too.
+  const mixed = makeSafeLookup(async () => ["93.184.216.34", "10.0.0.7"]);
+  assert.match((await new Promise<Error | null>((r) => mixed("mixed.example", { all: true }, (e) => r(e))))?.message ?? "", /not allowed/);
+  const good = makeSafeLookup(async () => ["93.184.216.34", "2606:4700:4700::1111"]);
+  const listed = await new Promise<unknown>((r) => good("ok.example", { all: true }, (_e, a) => r(a)));
+  assert.deepEqual(listed, [{ address: "93.184.216.34", family: 4 }, { address: "2606:4700:4700::1111", family: 6 }]);
+  const failing = makeSafeLookup(async () => { throw new Error("NXDOMAIN"); });
+  assert.match((await new Promise<Error | null>((r) => failing("nope.example", {}, (e) => r(e))))?.message ?? "", /NXDOMAIN/);
+});
+
+test("an address typed as a number in the link is refused before any connection", async () => {
+  let fetched = 0;
+  const fetchPage = async () => { fetched++; return { status: 200, type: "text/html", body: "<p>x</p>" }; };
+  for (const url of ["https://127.0.0.1/", "https://[::1]/", "https://[::ffff:7f00:1]/", "https://169.254.169.254/latest/meta-data/", "https://0x7f.0.0.1/", "https://2130706433/"]) {
+    const result = await readPage(url, { fetchPage });
+    assert.equal(result.ok, false, url);
+  }
+  assert.equal(fetched, 0);
 });

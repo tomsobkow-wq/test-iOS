@@ -671,4 +671,15 @@ final class BolekFlowUITests: XCTestCase {
         seconds = ask("What is the latest news on interest rates?", timeout: 150)
         shot("142-au-news \(Int(seconds))s")
     }
+
+    /// The question that failed before: used bikes on classified sites, in Perth.
+    func testBolekFindsUsedBikesOnTheWeb() throws {
+        app.terminate()
+        app.launchEnvironment["BOLEK_START_MODE"] = "bolek"
+        app.launchEnvironment["BOLEK_DEBUG_TOOL_TRACE"] = "1"
+        app.launch()
+        Thread.sleep(forTimeInterval: 8)
+        let seconds = ask("find me bmw r18 in perth", timeout: 200)
+        shot("150-r18-perth \(Int(seconds))s")
+    }
 }
