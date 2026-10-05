@@ -1,0 +1,217 @@
+import Foundation
+
+/// Where Bolek's server-side tools live (flight search, price watches). The agent loop stays on the
+/// phone; only these tools run remotely, and only Bolek may use them.
+public struct BackendConfig: Sendable, Equatable {
+    public let baseURL: URL
+    public let token: String
+
+    public init(baseURL: URL, token: String) {
+        self.baseURL = baseURL
+        self.token = token
+    }
+}
+
+/// One alert the server stored, such as a watched fare dropping below the user's threshold.
+public struct BackendAlert: Codable, Sendable, Equatable, Identifiable {
+    public let id: Int
+    public let title: String
+    public let body: String
+    /// Pages behind the alert (for a watched search: the new results), shown as buttons under the message.
+    public let links: [SourceLink]
+
+    public init(id: Int, title: String, body: String, links: [SourceLink] = []) {
+        self.id = id
+        self.title = title
+        self.body = body
+        self.links = links
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, title, body, links }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        body = try container.decode(String.self, forKey: .body)
+        links = SourceLink.displayable((try? container.decodeIfPresent([SourceLink].self, forKey: .links)) ?? [])
+    }
+
+    /// The text shown as a message from Bolek.
+    public var message: String { "\(title)\n\(body)" }
+}
+
+public enum BackendError: LocalizedError, Sendable, Equatable {
+    case unauthorized
+    case unreachable
+    case server(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .unauthorized: "The Bolek server rejected the access token."
+        case .unreachable: "The Bolek server could not be reached."
+        case .server(let message): message
+        }
+    }
+}
+
+/// The user's own country, language and currency, read from the phone. The server uses them whenever a request does not name another,
+/// so "find me a bike" searches the shops of wherever the user lives and prices come back in their money.
+public struct LocaleHints: Sendable, Equatable {
+    public let country: String?
+    public let language: String?
+    public let currency: String?
+
+    public init(country: String?, language: String?, currency: String?) {
+        self.country = country
+        self.language = language
+        self.currency = currency
+    }
+
+    public static var current: LocaleHints {
+        let locale = Locale.current
+        let language = Locale.preferredLanguages.first.flatMap { $0.split(separator: "-").first.map(String.init) }
+        return LocaleHints(country: locale.region?.identifier, language: language ?? locale.language.languageCode?.identifier, currency: locale.currency?.identifier)
+    }
+}
+
+public struct BackendClient: Sendable {
+    public typealias Transport = @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse)
+
+    public struct RemoteSpec: Sendable, Equatable {
+        public let name: String
+        public let description: String
+        public let risk: String
+        /// JSON Schema for the arguments, as a string (what the prompt renderers take).
+        public let parametersSchema: String
+    }
+
+    private let config: BackendConfig
+    private let transport: Transport
+    private let hints: LocaleHints
+
+    public init(config: BackendConfig, hints: LocaleHints = .current, transport: Transport? = nil) {
+        self.config = config
+        self.hints = hints
+        self.transport = transport ?? { request in
+            var request = request
+            request.timeoutInterval = 30
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else { throw BackendError.unreachable }
+            return (data, http)
+        }
+    }
+
+    public func tools() async throws -> [RemoteSpec] {
+        let data = try await send("v1/tools", method: "GET", body: nil)
+        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let list = root["tools"] as? [[String: Any]] else { throw BackendError.server("Unexpected reply from the Bolek server.") }
+        return list.compactMap { item in
+            guard let name = item["name"] as? String,
+                  let description = item["description"] as? String,
+                  let parameters = item["parameters"],
+                  let schema = try? JSONSerialization.data(withJSONObject: parameters, options: [.sortedKeys])
+            else { return nil }
+            return RemoteSpec(
+                name: name,
+                description: description,
+                risk: item["risk"] as? String ?? "write",
+                parametersSchema: String(decoding: schema, as: UTF8.self)
+            )
+        }
+    }
+
+    /// Returns the text the model should read, whether the call worked or the server explained why not.
+    public func call(_ name: String, argumentsJSON: String) async throws -> String {
+        try await callWithSources(name, argumentsJSON: argumentsJSON).content
+    }
+
+    /// Like `call`, also returning the pages the answer is based on (already limited to safe https links).
+    public func callWithSources(_ name: String, argumentsJSON: String) async throws -> (content: String, sources: [SourceLink]) {
+        struct Reply: Decodable { let ok: Bool; let content: String; let sources: [SourceLink]? }
+        let arguments = (try? JSONSerialization.jsonObject(with: Data(argumentsJSON.utf8))) ?? [String: Any]()
+        let body = try JSONSerialization.data(withJSONObject: ["name": name, "arguments": arguments])
+        let data = try await send("v1/tools/call", method: "POST", body: body)
+        let reply = try JSONDecoder().decode(Reply.self, from: data)
+        if !reply.ok { throw ToolError(reply.content) }
+        return (reply.content, SourceLink.displayable(reply.sources ?? []))
+    }
+
+    public func alerts(since id: Int) async throws -> [BackendAlert] {
+        struct Reply: Decodable { let alerts: [BackendAlert] }
+        let data = try await send("v1/alerts?since=\(id)", method: "GET", body: nil)
+        return try JSONDecoder().decode(Reply.self, from: data).alerts
+    }
+
+    public func markAlertsSeen(upTo id: Int) async throws {
+        let body = try JSONSerialization.data(withJSONObject: ["upTo": id])
+        _ = try await send("v1/alerts/seen", method: "POST", body: body)
+    }
+
+    private func send(_ path: String, method: String, body: Data?) async throws -> Data {
+        guard let url = URL(string: path, relativeTo: config.baseURL) else { throw BackendError.unreachable }
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.setValue("Bearer \(config.token)", forHTTPHeaderField: "Authorization")
+        if let country = hints.country { request.setValue(country, forHTTPHeaderField: "X-Country") }
+        if let language = hints.language { request.setValue(language, forHTTPHeaderField: "X-Language") }
+        if let currency = hints.currency { request.setValue(currency, forHTTPHeaderField: "X-Currency") }
+        if let body {
+            request.httpBody = body
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+        let data: Data
+        let response: HTTPURLResponse
+        do {
+            (data, response) = try await transport(request)
+        } catch {
+            throw BackendError.unreachable
+        }
+        switch response.statusCode {
+        case 200..<300: return data
+        case 401: throw BackendError.unauthorized
+        default:
+            let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
+            throw BackendError.server(message ?? "The Bolek server answered \(response.statusCode).")
+        }
+    }
+}
+
+/// A tool whose description and schema come from the server and whose work happens there.
+public struct RemoteTool: Tool {
+    public let name: String
+    public let description: LocalizedText
+    public let parametersSchema: String
+    public let tier: ToolTier = .bolek
+    public let risk: ToolRisk
+    private let client: BackendClient
+    private let sources: SourceCollector?
+
+    public init(spec: BackendClient.RemoteSpec, client: BackendClient, sources: SourceCollector? = nil) {
+        self.sources = sources
+        name = spec.name
+        // Server descriptions are English; Bolek is a large model and reads them fine in either conversation.
+        description = LocalizedText(en: spec.description, pl: spec.description)
+        parametersSchema = spec.parametersSchema
+        // A watch lasts and can cost searches, so the user is asked first; searches and lists are plain reads.
+        risk = spec.risk == "write" ? .writeExternal : .read
+        self.client = client
+    }
+
+    public func run(argumentsJSON: String) async throws -> String {
+        do {
+            let reply = try await client.callWithSources(name, argumentsJSON: argumentsJSON)
+            sources?.add(reply.sources)
+            return reply.content
+        } catch let error as BackendError {
+            throw ToolError(error.errorDescription ?? "The Bolek server failed.")
+        }
+    }
+
+    /// Fetches the server's tools. An unreachable or unauthorised server yields none rather than an error,
+    /// so Bolek still chats; it just cannot search flights.
+    public static func discover(client: BackendClient, sources: SourceCollector? = nil) async -> [RemoteTool] {
+        guard let specs = try? await client.tools() else { return [] }
+        return specs.map { RemoteTool(spec: $0, client: client, sources: sources) }
+    }
+}

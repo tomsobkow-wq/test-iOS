@@ -1,0 +1,1136 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Allow": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zezwól"
+          }
+        }
+      }
+    },
+    "Not now": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie teraz"
+          }
+        }
+      }
+    },
+    "Message": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wiadomość"
+          }
+        }
+      }
+    },
+    "Send": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyślij"
+          }
+        }
+      }
+    },
+    "Lolek": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lolek"
+          }
+        }
+      }
+    },
+    "Bolek": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bolek"
+          }
+        }
+      }
+    },
+    "Private · runs on this iPhone": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prywatny · działa na tym iPhonie"
+          }
+        }
+      }
+    },
+    "Full agent · EU cloud": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pełny agent · chmura w UE"
+          }
+        }
+      }
+    },
+    "Hi, I'm Lolek. I run only on this iPhone and never talk to any server. Try “weather”, “alarm: 06:30” or “note: buy milk”.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cześć, jestem Lolek. Działam tylko na tym iPhonie i nie łączę się z żadnym serwerem. Spróbuj: „pogoda”, „budzik: 06:30” lub „notatka: kupić mleko”."
+          }
+        }
+      }
+    },
+    "Hi, I'm Bolek. I can act for you on the web and in your apps. This is a demo model for now. Try “weather”, “spending: this_week” or “call: Anna”.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cześć, jestem Bolek. Mogę działać za Ciebie w internecie i w Twoich aplikacjach. Na razie to model demonstracyjny. Spróbuj: „pogoda”, „wydatki: this_week” lub „zadzwoń: Anna”."
+          }
+        }
+      }
+    },
+    "Download": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pobierz"
+          }
+        }
+      }
+    },
+    "Try again": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spróbuj ponownie"
+          }
+        }
+      }
+    },
+    "Checking the download…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprawdzam pobrany plik…"
+          }
+        }
+      }
+    },
+    "Lolek needs to download his brain once (%@). Wi-Fi is best. After that he works offline and nothing leaves this phone.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lolek musi raz pobrać swój „mózg” (%@). Najlepiej przez Wi-Fi. Potem działa offline i nic nie opuszcza tego telefonu."
+          }
+        }
+      }
+    },
+    "Getting Lolek ready… %lld%%": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przygotowuję Lolka… %lld%%"
+          }
+        }
+      }
+    },
+    "Hi, I'm Bolek, the full agent. Ask me anything, or tell me what to do on your phone.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cześć, jestem Bolek, pełny agent. Zapytaj o cokolwiek albo powiedz, co zrobić w telefonie."
+          }
+        }
+      }
+    },
+    "Files": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pliki"
+          }
+        }
+      }
+    },
+    "Photos": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zdjęcia"
+          }
+        }
+      }
+    },
+    "Add a document or statement": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dodaj dokument lub wyciąg"
+          }
+        }
+      }
+    },
+    "Added file: %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dodano plik: %@"
+          }
+        }
+      }
+    },
+    "Reading your file…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czytam plik…"
+          }
+        }
+      }
+    },
+    "Summarising the document…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Streszczam dokument…"
+          }
+        }
+      }
+    },
+    "Ask me anything about it, for example “how much did I spend on food?”.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapytaj mnie o cokolwiek, na przykład „ile wydałem na jedzenie?”."
+          }
+        }
+      }
+    },
+    "Ask me anything about it.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapytaj mnie o cokolwiek na jego temat."
+          }
+        }
+      }
+    },
+    "I saved the document. When my brain has finished downloading I can summarise it and answer questions about it.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapisałem dokument. Gdy skończę pobierać swój „mózg”, streszczę go i odpowiem na pytania."
+          }
+        }
+      }
+    },
+    "I could not open that file.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie mogłem otworzyć tego pliku."
+          }
+        }
+      }
+    },
+    "Offline · still working": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offline · nadal działam"
+          }
+        }
+      }
+    },
+    "No internet · Bolek needs a connection": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak internetu · Bolek potrzebuje połączenia"
+          }
+        }
+      }
+    },
+    "Try it: switch on airplane mode and ask me anything. I'm still here.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spróbuj: włącz tryb samolotowy i zapytaj mnie o cokolwiek. Nadal tu jestem."
+          }
+        }
+      }
+    },
+    "Ask Bolek": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapytaj Bolka"
+          }
+        }
+      }
+    },
+    "Sends only this request to the cloud (EU).": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyśle do chmury (UE) tylko tę prośbę."
+          }
+        }
+      }
+    },
+    "Bolek needs the internet and there is no connection right now. Lolek still works offline.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bolek potrzebuje internetu, a teraz nie ma połączenia. Lolek nadal działa offline."
+          }
+        }
+      }
+    },
+    "Watch flight prices from %@ to %@ (%@) and alert me at %@ or below?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obserwować ceny lotów z %@ do %@ (%@) i powiadomić mnie, gdy spadną do %@ lub niżej?"
+          }
+        }
+      }
+    },
+    "Connect Gmail": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Połącz Gmaila"
+          }
+        }
+      }
+    },
+    "Gmail needs permission to read your email. Connect again and leave “Read your email” ticked.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail potrzebuje zgody na czytanie poczty. Połącz ponownie i zostaw zaznaczone „Czytanie poczty”."
+          }
+        }
+      }
+    },
+    "Google did not finish the sign-in. Try again.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google nie dokończył logowania. Spróbuj ponownie."
+          }
+        }
+      }
+    },
+    "Gmail was not connected.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail nie został połączony."
+          }
+        }
+      }
+    },
+    "Gmail sign-in is not set up in this test build yet: it needs a Google client ID from the developer.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Logowanie do Gmaila nie jest jeszcze skonfigurowane w tej wersji testowej: potrzebny jest identyfikator klienta Google od dewelopera."
+          }
+        }
+      }
+    },
+    "Connect another Gmail": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Połącz kolejnego Gmaila"
+          }
+        }
+      }
+    },
+    "Disconnect %@": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odłącz %@"
+          }
+        }
+      }
+    },
+    "Gmail (%@) is connected. I read your email on this iPhone only: nothing from it goes to Bolek or any server. Try “any unread email?”": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail (%@) jest połączony. Czytam Twoją pocztę tylko na tym iPhonie: nic z niej nie trafia do Bolka ani na żaden serwer. Spróbuj: „czy mam nieprzeczytane maile?”"
+          }
+        }
+      }
+    },
+    "Mail": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poczta"
+          }
+        }
+      }
+    },
+    "Today": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dzisiaj"
+          }
+        }
+      }
+    },
+    "Yesterday": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wczoraj"
+          }
+        }
+      }
+    },
+    "Unread": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieprzeczytane"
+          }
+        }
+      }
+    },
+    "People": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Osoby"
+          }
+        }
+      }
+    },
+    "All": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie"
+          }
+        }
+      }
+    },
+    "Search mail": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szukaj w poczcie"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gotowe"
+          }
+        }
+      }
+    },
+    "Clear search": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyczyść wyszukiwanie"
+          }
+        }
+      }
+    },
+    "On this iPhone only": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tylko na tym iPhonie"
+          }
+        }
+      }
+    },
+    "All accounts": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie konta"
+          }
+        }
+      }
+    },
+    "%lld unread": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld nieprzeczytanych"
+          }
+        }
+      }
+    },
+    "%lld accounts": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld konta"
+          }
+        }
+      }
+    },
+    "Reading your mail…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czytam pocztę…"
+          }
+        }
+      }
+    },
+    "Could not read mail": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się odczytać poczty"
+          }
+        }
+      }
+    },
+    "No mailbox is connected.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Żadna skrzynka nie jest połączona."
+          }
+        }
+      }
+    },
+    "Nothing here": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pusto"
+          }
+        }
+      }
+    },
+    "No mail matches your search.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak maili pasujących do wyszukiwania."
+          }
+        }
+      }
+    },
+    "No mail has arrived today.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dzisiaj nie przyszła żadna poczta."
+          }
+        }
+      }
+    },
+    "You are all caught up.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystko przeczytane."
+          }
+        }
+      }
+    },
+    "No mail from people.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak maili od osób."
+          }
+        }
+      }
+    },
+    "The inbox is empty.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrzynka jest pusta."
+          }
+        }
+      }
+    },
+    "That's everything.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To wszystko."
+          }
+        }
+      }
+    },
+    "Could not reach %@.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się połączyć z %@."
+          }
+        }
+      }
+    },
+    "Opening…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwieram…"
+          }
+        }
+      }
+    },
+    "Summarise": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Streść"
+          }
+        }
+      }
+    },
+    "Ask Lolek": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapytaj Lolka"
+          }
+        }
+      }
+    },
+    "Reply": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odpowiedz"
+          }
+        }
+      }
+    },
+    "Summarise this email.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Streść ten mail."
+          }
+        }
+      }
+    },
+    "About this email: ": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O tym mailu: "
+          }
+        }
+      }
+    },
+    "Lolek reads your mail on this iPhone only. Nothing goes to Bolek or any server.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lolek czyta Twoją pocztę tylko na tym iPhonie. Nic nie trafia do Bolka ani na żaden serwer."
+          }
+        }
+      }
+    },
+    "Hi, I'm Lolek. I run on this iPhone, and your chats and documents never leave it. Ask me about the weather, set an alarm, or text a friend.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cześć, jestem Lolek. Działam na tym iPhonie, a Twoje rozmowy i dokumenty nigdy go nie opuszczają. Zapytaj mnie o pogodę, ustaw budzik albo napisz SMS do znajomego."
+          }
+        }
+      }
+    },
+    "Events": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wydarzenia"
+          }
+        }
+      }
+    },
+    "Add": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dodaj"
+          }
+        }
+      }
+    },
+    "Added": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dodano"
+          }
+        }
+      }
+    },
+    "Add to Calendar": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dodaj do kalendarza"
+          }
+        }
+      }
+    },
+    "Title": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tytuł"
+          }
+        }
+      }
+    },
+    "Starts": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Początek"
+          }
+        }
+      }
+    },
+    "Ends": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koniec"
+          }
+        }
+      }
+    },
+    "Location": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Miejsce"
+          }
+        }
+      }
+    },
+    "Optional": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opcjonalnie"
+          }
+        }
+      }
+    },
+    "Cancelled": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odwołane"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anuluj"
+          }
+        }
+      }
+    },
+    "Add “%@” to your calendar: %@?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dodać „%@” do kalendarza: %@?"
+          }
+        }
+      }
+    },
+    "No invitations or appointments found.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie znaleziono zaproszeń ani wizyt."
+          }
+        }
+      }
+    },
+    "Change time or details": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmień termin lub szczegóły"
+          }
+        }
+      }
+    },
+    "Open in Calendar": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz w Kalendarzu"
+          }
+        }
+      }
+    },
+    "Remove from calendar": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń z kalendarza"
+          }
+        }
+      }
+    },
+    "In your calendar": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W Twoim kalendarzu"
+          }
+        }
+      }
+    },
+    "Change appointment": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmień wizytę"
+          }
+        }
+      }
+    },
+    "Save changes": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapisz zmiany"
+          }
+        }
+      }
+    },
+    "Could not change the calendar": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się zmienić kalendarza"
+          }
+        }
+      }
+    },
+    "Move “%@” to %@?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przenieść „%@” na %@?"
+          }
+        }
+      }
+    },
+    "Delete “%@”%@ from your calendar?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usunąć „%@”%@ z kalendarza?"
+          }
+        }
+      }
+    },
+    "New email": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nowy mail"
+          }
+        }
+      }
+    },
+    "From": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Od"
+          }
+        }
+      }
+    },
+    "To": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do"
+          }
+        }
+      }
+    },
+    "Subject": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temat"
+          }
+        }
+      }
+    },
+    "Choose account": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wybierz konto"
+          }
+        }
+      }
+    },
+    "Tell Lolek what to say…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Powiedz Lolkowi, co napisać…"
+          }
+        }
+      }
+    },
+    "Write": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Napisz"
+          }
+        }
+      }
+    },
+    "The original message is quoted below your text.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oryginalna wiadomość zostanie zacytowana pod Twoim tekstem."
+          }
+        }
+      }
+    },
+    "Sent from your Gmail, straight from this iPhone.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysłane z Twojego Gmaila, prosto z tego iPhone'a."
+          }
+        }
+      }
+    },
+    "This account is connected for reading only. Reconnect it and allow sending to send from the app.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To konto jest połączone tylko do czytania. Połącz je ponownie i zezwól na wysyłanie, aby wysyłać z aplikacji."
+          }
+        }
+      }
+    },
+    "Reconnect Gmail": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Połącz Gmaila ponownie"
+          }
+        }
+      }
+    },
+    "Open in Mail app": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz w aplikacji Mail"
+          }
+        }
+      }
+    },
+    "Sent": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysłano"
+          }
+        }
+      }
+    },
+    "Lolek could not write that. Try again, or write it yourself.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lolek nie zdołał tego napisać. Spróbuj ponownie albo napisz samodzielnie."
+          }
+        }
+      }
+    },
+    "Watch the price of “%@” and alert you at %@ %@ or below?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obserwować cenę „%@” i powiadomić Cię, gdy spadnie do %@ %@ lub niżej?"
+          }
+        }
+      }
+    },
+    "Follow the news on “%@” and alert you to new headlines?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Śledzić wiadomości o „%@” i powiadamiać o nowych nagłówkach?"
+          }
+        }
+      }
+    },
+    "Check the web for new results for “%@”%@ from time to time and alert you?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprawdzać co jakiś czas w internecie nowe wyniki dla „%@”%@ i powiadamiać Cię?"
+          }
+        }
+      }
+    },
+    "Stop watching %@?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przestać obserwować %@?"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

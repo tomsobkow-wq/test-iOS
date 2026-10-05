@@ -1,0 +1,11 @@
+{
+  "name": "bolek-backend",
+  "private": true,
+  "type": "module",
+  "description": "Bolek's server-side tools: flight search, price watching, alerts. No dependencies: Node's own TypeScript, SQLite and test runner.",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "start": "node src/server.ts",
+    "test": "node --test"
+  }
+}

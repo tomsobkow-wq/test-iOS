@@ -1,0 +1,122 @@
+{
+ "chat-1": {
+  "A": "kimi",
+  "B": "qwen"
+ },
+ "chat-2": {
+  "A": "kimi",
+  "B": "qwen"
+ },
+ "chat-3": {
+  "A": "qwen",
+  "B": "kimi"
+ },
+ "chat-4": {
+  "A": "qwen",
+  "B": "kimi"
+ },
+ "mail-1": {
+  "A": "kimi",
+  "B": "qwen"
+ },
+ "mail-2": {
+  "A": "kimi",
+  "B": "qwen"
+ },
+ "mail-3": {
+  "A": "qwen",
+  "B": "kimi"
+ },
+ "mail-4": {
+  "A": "kimi",
+  "B": "qwen"
+ },
+ "mail-5": {
+  "A": "qwen",
+  "B": "kimi"
+ },
+ "sum-1": {
+  "A": "kimi",
+  "B": "qwen"
+ },
+ "sum-2": {
+  "A": "kimi",
+  "B": "qwen"
+ },
+ "tone-1": {
+  "A": "qwen",
+  "B": "kimi"
+ },
+ "tone-2": {
+  "A": "qwen",
+  "B": "kimi"
+ },
+ "tone-3": {
+  "A": "kimi",
+  "B": "qwen"
+ },
+ "gram-1": {
+  "A": "qwen",
+  "B": "kimi"
+ },
+ "gram-2": {
+  "A": "kimi",
+  "B": "qwen"
+ },
+ "gram-3": {
+  "A": "qwen",
+  "B": "kimi"
+ },
+ "gram-4": {
+  "A": "kimi",
+  "B": "qwen"
+ },
+ "know-1": {
+  "A": "kimi",
+  "B": "qwen"
+ },
+ "know-2": {
+  "A": "kimi",
+  "B": "qwen"
+ },
+ "know-3": {
+  "A": "qwen",
+  "B": "kimi"
+ },
+ "asst-1": {
+  "A": "kimi",
+  "B": "qwen"
+ },
+ "asst-2": {
+  "A": "qwen",
+  "B": "kimi"
+ },
+ "asst-3": {
+  "A": "kimi",
+  "B": "qwen"
+ },
+ "lim-1": {
+  "A": "qwen",
+  "B": "kimi"
+ },
+ "lim-2": {
+  "A": "qwen",
+  "B": "kimi"
+ },
+ "mix-1": {
+  "A": "qwen",
+  "B": "kimi"
+ },
+ "mix-2": {
+  "A": "kimi",
+  "B": "qwen"
+ },
+ "short-1": {
+  "A": "qwen",
+  "B": "kimi"
+ },
+ "short-2": {
+  "A": "qwen",
+  "B": "kimi"
+ }
+}

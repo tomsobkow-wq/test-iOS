@@ -1,0 +1,97 @@
+# Generate the Xcode project with: xcodegen generate
+# Separate from PetConsumptionTracker: own project, own bundle ID, own folder.
+name: BolekLolek
+options:
+  bundleIdPrefix: com.boleklolek
+  deploymentTarget:
+    iOS: "18.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "1"
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+packages:
+  AgentCore:
+    path: Packages/AgentCore
+  LolekRuntime:
+    path: Packages/LolekRuntime
+  DocumentKit:
+    path: Packages/DocumentKit
+targets:
+  BolekLolek:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+    info:
+      path: Support/Info.plist
+      properties:
+        CFBundleDisplayName: Bolek & Lolek
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, pl]
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSRemindersFullAccessUsageDescription: To add reminders to the Reminders app and tick them off when you ask.
+        NSCalendarsFullAccessUsageDescription: To read your calendar and add events when you ask.
+        NSContactsUsageDescription: To find phone numbers when you ask to text or call someone.
+        NSLocationWhenInUseUsageDescription: To tell you the weather where you are.
+        NSAlarmKitUsageDescription: To ring your alarms and timers, even when the phone is on silent.
+        NSLocalNetworkUsageDescription: To reach your own Bolek server on your home network.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    entitlements:
+      path: Support/BolekLolek.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boleklolek.app
+    dependencies:
+      - package: AgentCore
+      - package: LolekRuntime
+      - package: DocumentKit
+  BolekLolekDeviceTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: DeviceTests
+    dependencies:
+      - target: BolekLolek
+      - package: AgentCore
+      - package: LolekRuntime
+      - package: DocumentKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boleklolek.devicetests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/BolekLolek.app/BolekLolek
+        BUNDLE_LOADER: $(TEST_HOST)
+  BolekLolekUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: BolekLolek
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.boleklolek.uitests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  BolekLolekUI:
+    build:
+      targets:
+        BolekLolek: all
+    test:
+      targets:
+        - BolekLolekUITests
+  BolekLolek:
+    build:
+      targets:
+        BolekLolek: all
+    test:
+      targets:
+        - BolekLolekDeviceTests
