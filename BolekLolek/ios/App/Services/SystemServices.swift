@@ -1,6 +1,7 @@
 import AgentCore
 import Contacts
 import CoreLocation
+import AlarmKit
 import EventKit
 import Foundation
 import UIKit
@@ -14,6 +15,20 @@ import WeatherKit
 
 struct LocalNotifications: NotificationScheduling {
     func schedule(_ notification: ScheduledNotification) async throws {
+        // Alarms and timers ring like the Clock app where iOS allows it; everything else (and any failure) is a notification.
+        if #available(iOS 26.0, *), notification.isAlarm, notification.repeats == nil {
+            do {
+                try await AlarmRinger.schedule(title: notification.title, at: notification.fireDate)
+                #if DEBUG
+                await NotificationDebug.dump(reason: "alarm scheduled for \(notification.fireDate)")
+                #endif
+                return
+            } catch {
+                #if DEBUG
+                await NotificationDebug.dump(reason: "alarm failed (\(error)); using a notification")
+                #endif
+            }
+        }
         let center = UNUserNotificationCenter.current()
         guard try await center.requestAuthorization(options: [.alert, .sound, .badge]) else {
             throw ToolError("Notifications are turned off for this app. Enable them in Settings to use alarms and reminders.")
@@ -40,8 +55,31 @@ struct LocalNotifications: NotificationScheduling {
             repeats: notification.repeats != nil
         )
         try await center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger))
+        #if DEBUG
+        await NotificationDebug.dump(reason: "scheduled for \(notification.fireDate)")
+        #endif
     }
 }
+
+#if DEBUG
+/// Debug only: writes the app's notification permission and what is pending or delivered (titles and counts, no other apps) to Documents/notifications.txt.
+enum NotificationDebug {
+    static func dump(reason: String) async {
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        let pending = await center.pendingNotificationRequests()
+        let delivered = await center.deliveredNotifications()
+        func name(_ s: UNNotificationSetting) -> String { s == .enabled ? "on" : (s == .disabled ? "off" : "n/a") }
+        let status = ["notDetermined", "denied", "authorized", "provisional", "ephemeral"][min(settings.authorizationStatus.rawValue, 4)]
+        var alarms = ""
+        if #available(iOS 26.0, *) { alarms = " alarmKit=\(AlarmManager.shared.authorizationState) alarms=\(((try? AlarmManager.shared.alarms) ?? []).map { String(describing: $0.state) })" }
+        let line = "\(Date()) \(reason):\(alarms) auth=\(status) alert=\(name(settings.alertSetting)) sound=\(name(settings.soundSetting)) badge=\(name(settings.badgeSetting)) lock=\(name(settings.lockScreenSetting)) center=\(name(settings.notificationCenterSetting)) timeSensitive=\(name(settings.timeSensitiveSetting)) pending=\(pending.count) delivered=\(delivered.map(\.request.content.title))\n"
+        guard let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        let url = folder.appendingPathComponent("notifications.txt")
+        if let handle = try? FileHandle(forWritingTo: url) { handle.seekToEndOfFile(); handle.write(Data(line.utf8)); try? handle.close() } else { try? Data(line.utf8).write(to: url) }
+    }
+}
+#endif
 
 /// Lets notifications show as banners while the app is open too.
 final class ForegroundNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {

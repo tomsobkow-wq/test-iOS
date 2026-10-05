@@ -313,4 +313,38 @@ final class BolekFlowUITests: XCTestCase {
         app.launch()
         Thread.sleep(forTimeInterval: 6)
     }
+
+    /// Sets a 1 minute timer, leaves the app, and watches for the banner.
+    func testTimerNotificationArrivesWhileAppIsInBackground() throws {
+        app.terminate()
+        app.launch()
+        Thread.sleep(forTimeInterval: 4)
+        _ = askHandlingPrompts("Set a timer for 1 minute")
+        let setAt = Date()
+        XCUIDevice.shared.press(.home)
+        var seenAfter: TimeInterval?
+        var report = ""
+        let banner = springboard.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] 'timer' OR label CONTAINS[c] 'Bolek'")).firstMatch
+        while Date().timeIntervalSince(setAt) < 80 {
+            if banner.exists, seenAfter == nil {
+                seenAfter = Date().timeIntervalSince(setAt)
+                let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+                attachment.name = "60-banner"
+                attachment.lifetime = .keepAlways
+                add(attachment)
+            }
+            if seenAfter != nil { break }
+            Thread.sleep(forTimeInterval: 1)
+        }
+        report = seenAfter.map { "banner seen \(Int($0))s after the timer was set" } ?? "NO banner within 100s"
+        let note = XCTAttachment(string: report)
+        note.name = "report"
+        note.lifetime = .keepAlways
+        add(note)
+        // Ask the app what iOS says about its notifications (permission, sound, delivered titles).
+        app.terminate()
+        app.launchEnvironment["BOLEK_DEBUG_DUMP_NOTIFICATIONS"] = "1"
+        app.launch()
+        Thread.sleep(forTimeInterval: 5)
+    }
 }
