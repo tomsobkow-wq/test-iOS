@@ -112,6 +112,7 @@ struct Bubble: View {
                 .padding(.horizontal, 15)
                 .padding(.vertical, 10)
                 .background(isMine ? accent : Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 19))
+                .accessibilityIdentifier(isMine ? "bubble-user" : "bubble-assistant")
             if !isMine { Spacer(minLength: 56) }
         }
     }

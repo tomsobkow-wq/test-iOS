@@ -221,10 +221,25 @@ public actor AgentSession {
         do {
             let output = try await tool.run(argumentsJSON: call.argumentsJSON)
             await activity.record(ActivityEntry(mode: mode, toolName: tool.name, outcome: .succeeded))
+            Self.trace(call, outcome: "ok", detail: output)
             return ToolResult(callID: call.id, content: output)
         } catch {
             await activity.record(ActivityEntry(mode: mode, toolName: tool.name, outcome: .failed))
+            Self.trace(call, outcome: "failed", detail: error.localizedDescription)
             return ToolResult(callID: call.id, content: "Tool failed: \(error.localizedDescription)", isError: true)
         }
+    }
+
+    /// Debug builds only, and only when BOLEK_DEBUG_TOOL_TRACE=1 (written to Documents/toolcalls.txt): which tool the model called, with what arguments,
+    /// and how it ended (a short start of the result). For finding out why a small model's tool call did not work.
+    private static func trace(_ call: ToolCall, outcome: String, detail: String) {
+        #if DEBUG
+        guard ProcessInfo.processInfo.environment["BOLEK_DEBUG_TOOL_TRACE"] == "1",
+              let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        let path = folder.appendingPathComponent("toolcalls.txt").path
+        let line = "\(Date()) \(call.name) \(call.argumentsJSON) -> \(outcome): \(String(detail.prefix(90)).replacingOccurrences(of: "\n", with: " / "))\n"
+        if let handle = FileHandle(forWritingAtPath: path) { handle.seekToEndOfFile(); handle.write(Data(line.utf8)); try? handle.close() }
+        else { try? Data(line.utf8).write(to: URL(fileURLWithPath: path)) }
+        #endif
     }
 }

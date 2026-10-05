@@ -46,6 +46,43 @@ final class CalendarEditTests: XCTestCase {
         XCTAssertEqual(moved?.title, "Wizyta kontrolna")
     }
 
+    func testExtraWordsAroundTheTitleDoNotBreakTheMatch() async throws {
+        let box = make()
+        let tool = RescheduleCalendarEventTool(calendar: box, clock: clock())
+        for title in ["Wizyta kontrolna appointment", "the wizyta kontrolna", "wizyta kontrolna event", "Lolek wizyta kontrolna"] {
+            _ = try await tool.run(argumentsJSON: "{\"title\":\"\(title)\",\"new_start\":\"2027-01-21T09:00\"}")
+        }
+        let moved = await box.all.filter { $0.title == "Wizyta kontrolna" }
+        XCTAssertEqual(moved.count, 1)
+    }
+
+    func testAWrongDayFromTheModelDoesNotHideTheEvent() async throws {
+        let box = make()
+        // The model put today's date in "on" although the event is in January.
+        let tool = RescheduleCalendarEventTool(calendar: box, clock: clock())
+        _ = try await tool.run(argumentsJSON: #"{"title":"Wizyta kontrolna","on":"2026-10-05","new_start":"2027-01-21T09:00:00"}"#)
+        let moved = await box.all.first { $0.id == "a" }
+        XCTAssertEqual(moved?.start, at(2027, 1, 21, 9))
+        let delete = DeleteCalendarEventTool(calendar: box, clock: clock())
+        _ = try await delete.run(argumentsJSON: #"{"title":"wizyta","on":"2026-12-24"}"#)
+        let left = await box.all.map(\.id).sorted()
+        XCTAssertEqual(left, ["b", "c"])
+    }
+
+    func testARightDayStillNarrowsBetweenTwoSimilarEvents() async throws {
+        let box = make()
+        _ = try await DeleteCalendarEventTool(calendar: box, clock: clock()).run(argumentsJSON: #"{"title":"Team sync","on":"2026-10-08"}"#)
+        let left = await box.all.map(\.id).sorted()
+        XCTAssertEqual(left, ["a", "c"])
+    }
+
+    func testAWrongOrUnrelatedTitleStillMatchesNothing() async {
+        let tool = DeleteCalendarEventTool(calendar: make(), clock: clock())
+        for title in ["Dentist", "zebra kontrolna", "appointment"] {
+            do { _ = try await tool.run(argumentsJSON: "{\"title\":\"\(title)\"}"); XCTFail(title) } catch is ToolError {} catch { XCTFail() }
+        }
+    }
+
     func testTwoMatchesNeverGuess() async throws {
         let box = make()
         let tool = RescheduleCalendarEventTool(calendar: box, clock: clock())

@@ -287,28 +287,40 @@ enum CalendarLookup {
     static func find(title: String, on day: String?, calendar: any CalendarProviding, clock: ToolClock) async throws -> CalendarEventInfo {
         let now = clock.now()
         let cal = clock.calendar
-        var from = cal.startOfDay(for: now)
-        var to = cal.date(byAdding: .day, value: 366, to: from) ?? from.addingTimeInterval(366 * 86_400)
+        let start = cal.startOfDay(for: now)
+        let yearEnd = cal.date(byAdding: .day, value: 366, to: start) ?? start.addingTimeInterval(366 * 86_400)
+        // A small model often fills "on" with a wrong day (today, or the day it is moving to). The day narrows the search when it
+        // helps and is ignored when nothing matches there, so a wrong guess cannot hide the event.
+        var windows: [(Date, Date)] = []
         if let day, let date = ToolDates.parse(day, now: now, calendar: cal) {
-            from = cal.startOfDay(for: date)
-            to = cal.date(byAdding: .day, value: 1, to: from) ?? from.addingTimeInterval(86_400)
+            let from = cal.startOfDay(for: date)
+            windows.append((from, cal.date(byAdding: .day, value: 1, to: from) ?? from.addingTimeInterval(86_400)))
         }
-        let words = title.folded.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init).filter { $0.count > 1 }
-        let all = try await calendar.events(from: from, to: to).sorted { $0.start < $1.start }
-        let matches = all.filter { event in
-            let name = event.title.folded
-            return words.isEmpty ? false : words.allSatisfy { name.contains($0) }
-        }
+        windows.append((start, yearEnd))
+
+        let filler: Set<String> = ["the", "my", "a", "an", "to", "for", "of", "on", "event", "appointment", "meeting", "calendar", "entry", "moje", "moj", "moja", "wydarzenie", "wizyte", "termin", "spotkanie"]
+        let words = title.folded.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init).filter { $0.count > 1 && !filler.contains($0) }
         func line(_ e: CalendarEventInfo) -> String { "\"\(e.title)\" on \(ToolDates.describe(e.start, calendar: cal))" }
-        guard let first = matches.first else {
-            let nearby = all.prefix(6).map(line).joined(separator: "; ")
-            throw ToolError("No calendar event matches \"\(title)\". " + (nearby.isEmpty ? "The calendar is empty for that period." : "Events then: \(nearby)."))
+
+        var lastAll: [CalendarEventInfo] = []
+        for (from, to) in windows {
+            let all = try await calendar.events(from: from, to: to).sorted { $0.start < $1.start }
+            lastAll = all
+            // Score = share of the asked-for words found in the title; the best scorers (at least 60%) are the matches.
+            let scored: [(event: CalendarEventInfo, score: Double)] = words.isEmpty ? [] : all.map { event in
+                let name = event.title.folded
+                return (event, Double(words.filter { name.contains($0) }.count) / Double(words.count))
+            }.filter { $0.score >= 0.6 }
+            guard let best = scored.map(\.score).max() else { continue }
+            let matches = scored.filter { $0.score == best }.map(\.event)
+            if matches.count > 1 {
+                throw ToolError("\(matches.count) events match \"\(title)\": \(matches.prefix(6).map(line).joined(separator: "; ")). Ask the user which one (or for its date).")
+            }
+            guard !matches[0].id.isEmpty else { throw ToolError("That event cannot be changed from here.") }
+            return matches[0]
         }
-        if matches.count > 1 {
-            throw ToolError("\(matches.count) events match \"\(title)\": \(matches.prefix(6).map(line).joined(separator: "; ")). Ask the user which one (or for its date).")
-        }
-        guard !first.id.isEmpty else { throw ToolError("That event cannot be changed from here.") }
-        return first
+        let nearby = lastAll.prefix(6).map(line).joined(separator: "; ")
+        throw ToolError("No calendar event matches \"\(title)\". " + (nearby.isEmpty ? "The calendar is empty for that period." : "Upcoming events: \(nearby)."))
     }
 }
 

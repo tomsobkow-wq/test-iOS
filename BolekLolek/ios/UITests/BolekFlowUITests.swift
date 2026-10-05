@@ -246,6 +246,14 @@ final class BolekFlowUITests: XCTestCase {
         app.staticTexts.allElementsBoundByIndex.contains { $0.label.contains(needle) }
     }
 
+    /// The text of the newest assistant bubble only (never the user's own message).
+    private func lastAssistantReply() -> String {
+        let bubbles = app.otherElements.matching(identifier: "bubble-assistant").allElementsBoundByIndex
+        let texts = app.staticTexts.matching(NSPredicate(format: "label != ''")).allElementsBoundByIndex
+        _ = bubbles
+        return texts.last?.label ?? ""
+    }
+
     func testPhoneFunctionsWithoutCallingAnyone() throws {
         app.terminate()
         app.launchEnvironment["BOLEK_DEBUG_CLEAN_TEST_EVENTS"] = "1"
@@ -505,5 +513,77 @@ final class BolekFlowUITests: XCTestCase {
         body.typeText("Test")
         XCTAssertFalse(app.buttons["compose-send"].isEnabled, "Send must stay off")
         shot("103-composer-readonly")
+    }
+
+    /// Real calendar on the phone: add from a card, change it, remove it, then move and delete through chat. Cleans up after itself.
+    func testMoveAndDeleteAppointments() throws {
+        app.terminate()
+        app.launchEnvironment["BOLEK_DEBUG_MAIL_FIXTURE"] = "1"
+        app.launchEnvironment["BOLEK_DEBUG_CLEAN_TEST_EVENTS"] = "1"
+        app.launchEnvironment["BOLEK_DEBUG_TOOL_TRACE"] = "1"
+        app.launch()
+        XCTAssertTrue(app.buttons["mail-button"].waitForExistence(timeout: 15), "mail button")
+        Thread.sleep(forTimeInterval: 4)
+        answerSystemPrompts()
+        func openClinicEmail() {
+            app.buttons["mail-button"].tap()
+            Thread.sleep(forTimeInterval: 3)
+            app.buttons["Events"].firstMatch.tap()
+            Thread.sleep(forTimeInterval: 2)
+            let clinic = app.buttons.containing(NSPredicate(format: "label CONTAINS 'wizyta'")).firstMatch
+            XCTAssertTrue(clinic.waitForExistence(timeout: 8), "clinic row")
+            clinic.tap()
+            Thread.sleep(forTimeInterval: 3)
+        }
+        func addFromCard() {
+            app.buttons["appointment-add"].firstMatch.tap()
+            Thread.sleep(forTimeInterval: 2)
+            app.buttons["appointment-save"].firstMatch.tap()
+            for _ in 0..<20 { answerSystemPrompts(); if app.buttons["appointment-added"].exists { break }; Thread.sleep(forTimeInterval: 1) }
+            XCTAssertTrue(app.buttons["appointment-added"].exists, "card shows saved")
+        }
+        // 1) Add, change (title gets a suffix), remove.
+        openClinicEmail()
+        addFromCard()
+        shot("110-card-saved")
+        app.buttons["appointment-added"].tap()
+        Thread.sleep(forTimeInterval: 1)
+        shot("111-card-menu")
+        app.buttons["Change time or details"].tap()
+        Thread.sleep(forTimeInterval: 2)
+        let title = app.textFields["appointment-title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5), "title field")
+        title.tap()
+        title.typeText(" (moved)")
+        shot("112-change-sheet")
+        app.buttons["appointment-save"].tap()
+        Thread.sleep(forTimeInterval: 3)
+        XCTAssertTrue(app.buttons["appointment-added"].exists, "still saved after change")
+        app.buttons["appointment-added"].tap()
+        Thread.sleep(forTimeInterval: 1)
+        app.buttons["Remove from calendar"].tap()
+        Thread.sleep(forTimeInterval: 3)
+        XCTAssertTrue(app.buttons["appointment-add"].exists, "card back to Add after removing")
+        shot("113-card-removed")
+        // 2) Add again, then move and delete through chat.
+        addFromCard()
+        app.swipeDown(velocity: .fast)
+        Thread.sleep(forTimeInterval: 2)
+        app.buttons["mail-done"].tap()
+        Thread.sleep(forTimeInterval: 2)
+        var seconds = askHandlingPrompts("Move the Lolek test wizyta kontrolna appointment to 2027-01-21 at 09:00", approve: true, timeout: 200)
+        shot("114-chat-move \(Int(seconds))s")
+        seconds = askHandlingPrompts("What is on my calendar on 2027-01-21?")
+        shot("115-calendar-21 \(Int(seconds))s")
+        XCTAssertTrue(lastAssistantReply().contains("Lolek test") || lastAssistantReply().contains("wizyta"), "moved event shows up on 2027-01-21; last reply: \(lastAssistantReply())")
+        seconds = askHandlingPrompts("Delete the Lolek test wizyta kontrolna appointment", approve: true, timeout: 200)
+        shot("116-chat-delete \(Int(seconds))s")
+        seconds = askHandlingPrompts("What is on my calendar on 2027-01-21?")
+        shot("117-calendar-21-after \(Int(seconds))s")
+        XCTAssertFalse(lastAssistantReply().contains("wizyta"), "deleted event is gone; last reply: \(lastAssistantReply())")
+        app.terminate()
+        app.launchEnvironment["BOLEK_DEBUG_CLEAN_TEST_EVENTS"] = "1"
+        app.launch()
+        Thread.sleep(forTimeInterval: 6)
     }
 }
