@@ -23,10 +23,10 @@ test("health is open, everything else needs the token", async () => {
 
 test("the app can discover the tools", async () => {
   const { tools } = await (await fetch(`${base}/v1/tools`, { headers })).json() as { tools: Array<{ name: string; parameters: { type: string } }> };
-  assert.deepEqual(tools.map((t) => t.name), ["search_flights", "watch_flight_price", "list_flight_watches", "stop_flight_watch"]);
+  assert.deepEqual(tools.map((t) => t.name), ["search_flights", "watch_flight_price", "search_products", "watch_product_price", "search_news", "watch_news", "list_watches", "stop_watch"]);
   assert.ok(tools.every((t) => t.parameters.type === "object"));
   const risks = Object.fromEntries((await (await fetch(`${base}/v1/tools`, { headers })).json() as { tools: Array<{ name: string; risk: string }> }).tools.map((t) => [t.name, t.risk]));
-  assert.deepEqual(risks, { search_flights: "read", watch_flight_price: "write", list_flight_watches: "read", stop_flight_watch: "write" });
+  assert.deepEqual(risks, { search_flights: "read", watch_flight_price: "write", search_products: "read", watch_product_price: "write", search_news: "read", watch_news: "write", list_watches: "read", stop_watch: "write" });
 });
 
 test("a flight search works with city names and returns the facts", async () => {
@@ -55,12 +55,12 @@ test("watching: create, list, alert, stop", async () => {
   const created = await call("watch_flight_price", { origin: "WAW", destination: "LIS", depart_date: "2026-11-14", max_price: 900 });
   assert.equal(created.ok, true);
   assert.match(created.content, /about 60 of the 5 flight searches/); // limit is 5 in this test setup
-  const listed = await call("list_flight_watches", {});
+  const listed = await call("list_watches", {});
   const id = /\[([0-9a-f]{8})\]/.exec(listed.content)?.[1];
   assert.ok(id, listed.content);
   assert.equal((await call("watch_flight_price", { origin: "WAW", destination: "LIS", depart_date: "2026-11-14" })).ok, false, "max_price is required");
-  assert.match((await call("stop_flight_watch", { id })).content, /Stopped/);
-  assert.match((await call("list_flight_watches", {})).content, /No active price watches/);
+  assert.match((await call("stop_watch", { id })).content, /Stopped/);
+  assert.match((await call("list_watches", {})).content, /No active watches/);
 });
 
 test("alerts are served and can be marked seen", async () => {
@@ -79,7 +79,7 @@ test("alerts are served and can be marked seen", async () => {
 test("unknown tools and bad bodies are refused", async () => {
   assert.equal((await fetch(`${base}/v1/tools/call`, { method: "POST", headers, body: JSON.stringify({ name: "rm_rf", arguments: {} }) })).status, 404);
   assert.equal((await fetch(`${base}/v1/tools/call`, { method: "POST", headers, body: "not json" })).status, 400);
-  assert.equal((await fetch(`${base}/v1/tools/call`, { method: "POST", headers, body: JSON.stringify({ name: "list_flight_watches", arguments: [1] }) })).status, 400);
+  assert.equal((await fetch(`${base}/v1/tools/call`, { method: "POST", headers, body: JSON.stringify({ name: "list_watches", arguments: [1] }) })).status, 400);
 });
 
 test("with no flight key the tools say so plainly", async () => {

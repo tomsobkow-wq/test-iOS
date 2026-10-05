@@ -181,6 +181,16 @@ enum ApprovalText {
 
 extension ApprovalText {
     /// Plain-language question for the flight watch tools; the server's own description is written for the model.
+    private static func currencySymbol(country: String?) -> String {
+        switch (country ?? "pl").lowercased() {
+        case "pl": "zł"
+        case "us": "$"
+        case "gb", "uk": "£"
+        case "cz": "Kč"
+        default: "€"
+        }
+    }
+
     static func flightSentence(for request: ApprovalRequest) -> String? {
         guard let data = request.argumentsJSON.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
@@ -210,9 +220,15 @@ extension ApprovalText {
             guard let title = text("title") else { return nil }
             let day = text("on").flatMap { ToolDates.parse($0) }.map { " (" + AppointmentFormat.dateLine($0) + ")" } ?? ""
             return String(localized: "Delete “\(title)”\(day) from your calendar?")
-        case "stop_flight_watch":
+        case "watch_product_price":
+            guard let query = text("query"), let limit = text("max_price") else { return nil }
+            return String(localized: "Watch the price of “\(query)” and alert you at \(limit) \(currencySymbol(country: text("country"))) or below?")
+        case "watch_news":
+            guard let query = text("query") else { return nil }
+            return String(localized: "Follow the news on “\(query)” and alert you to new headlines?")
+        case "stop_watch", "stop_flight_watch":
             guard let id = text("id") else { return nil }
-            return String(localized: "Stop watching flight \(id)?")
+            return String(localized: "Stop watching \(id)?")
         default:
             return nil
         }

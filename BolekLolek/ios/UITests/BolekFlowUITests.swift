@@ -25,6 +25,12 @@ final class BolekFlowUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 10), "message field")
         field.tap()
         field.typeText(text)
+        // Typing can lag behind on a busy phone: wait for the Send button, and type again once if it never shows.
+        if !app.buttons["send-button"].waitForExistence(timeout: 5) {
+            field.tap()
+            field.typeText(" ")
+            _ = app.buttons["send-button"].waitForExistence(timeout: 5)
+        }
         app.buttons["send-button"].tap()
         let start = Date()
         Thread.sleep(forTimeInterval: 1.0)

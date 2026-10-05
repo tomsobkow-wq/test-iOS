@@ -2,7 +2,10 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { timingSafeEqual } from "node:crypto";
 import { loadConfig, type Config } from "./config.ts";
 import { openDb, type Db } from "./db.ts";
+import { TtlCache } from "./cache.ts";
 import { SerpApiFlights, type FlightProvider } from "./flights.ts";
+import { SerpApiNews, type NewsProvider } from "./news.ts";
+import { SerpApiShopping, type ProductProvider } from "./shopping.ts";
 import { Quota } from "./quota.ts";
 import { startScheduler } from "./scheduler.ts";
 import { ToolFailure, tools, type ToolContext } from "./tools.ts";
@@ -13,6 +16,8 @@ export interface AppDeps {
   db: Db;
   quota: Quota;
   provider: FlightProvider | undefined;
+  shopping?: ProductProvider;
+  news?: NewsProvider;
   now?: () => number;
 }
 
@@ -44,12 +49,13 @@ function authorised(req: IncomingMessage, token: string): boolean {
 
 export function createApp(deps: AppDeps): Server {
   const now = deps.now ?? Date.now;
-  const context = (): ToolContext => ({ db: deps.db, config: deps.config, quota: deps.quota, provider: deps.provider, user: USER, now });
+  const caches = { products: new TtlCache<import("./shopping.ts").ProductOffer[]>(10 * 60_000), news: new TtlCache<import("./news.ts").NewsItem[]>(5 * 60_000) };
+  const context = (): ToolContext => ({ db: deps.db, config: deps.config, quota: deps.quota, provider: deps.provider, shopping: deps.shopping, news: deps.news, caches, user: USER, now });
 
   return createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
     try {
-      if (req.method === "GET" && url.pathname === "/healthz") return send(res, 200, { ok: true, flights: !!deps.provider });
+      if (req.method === "GET" && url.pathname === "/healthz") return send(res, 200, { ok: true, flights: !!deps.provider, products: !!deps.shopping, news: !!deps.news });
       if (!url.pathname.startsWith("/v1/")) return send(res, 404, { error: "not found" });
       if (!authorised(req, deps.config.apiToken)) return send(res, 401, { error: "unauthorised" });
 
@@ -95,9 +101,11 @@ if (import.meta.main) {
   const db = openDb(config.dbPath);
   const quota = new Quota(db, config.monthlySearchLimit);
   const provider = config.serpApiKey ? new SerpApiFlights(config.serpApiKey) : undefined;
-  const server = createApp({ config, db, quota, provider });
-  if (provider) startScheduler({ db, provider, quota, onTick: (s) => console.log(`[watches] checked ${s.checked}, alerts ${s.alerts}, failed ${s.failed}, no quota ${s.skippedNoQuota}`) }, config.tickSeconds * 1000);
+  const shopping = config.serpApiKey ? new SerpApiShopping(config.serpApiKey) : undefined;
+  const news = config.serpApiKey ? new SerpApiNews(config.serpApiKey) : undefined;
+  const server = createApp({ config, db, quota, provider, shopping, news });
+  if (provider) startScheduler({ db, provider, shopping, news, quota, onTick: (s) => console.log(`[watches] checked ${s.checked}, alerts ${s.alerts}, failed ${s.failed}, no quota ${s.skippedNoQuota}`) }, config.tickSeconds * 1000);
   server.listen(config.port, config.host, () => {
-    console.log(`Bolek backend on http://${config.host}:${config.port}  flights: ${provider ? "SerpApi" : "NOT configured (set SERPAPI_KEY)"}  searches this month: ${quota.used(Date.now())}/${quota.limit}`);
+    console.log(`Bolek backend on http://${config.host}:${config.port}  flights, products, news: ${provider ? "SerpApi" : "NOT configured (set SERPAPI_KEY)"}  searches this month: ${quota.used(Date.now())}/${quota.limit}`);
   });
 }

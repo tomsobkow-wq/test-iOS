@@ -27,7 +27,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     serpApiKey: env.SERPAPI_KEY || undefined,
     dbPath: env.DB_PATH ?? "data/bolek.db",
     monthlySearchLimit: Number(env.SERPAPI_MONTHLY_LIMIT ?? 200),
-    maxWatches: Number(env.MAX_WATCHES ?? 3),
+    maxWatches: Number(env.MAX_WATCHES ?? 5),
     defaultCheckEveryHours: Number(env.CHECK_EVERY_HOURS ?? 12),
     tickSeconds: Number(env.TICK_SECONDS ?? 60),
   };

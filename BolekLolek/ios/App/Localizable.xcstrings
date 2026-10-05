@@ -331,16 +331,6 @@
         }
       }
     },
-    "Stop watching flight %@?": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Przestać obserwować lot %@?"
-          }
-        }
-      }
-    },
     "Connect Gmail": {
       "localizations": {
         "pl": {
@@ -1097,6 +1087,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lolek nie zdołał tego napisać. Spróbuj ponownie albo napisz samodzielnie."
+          }
+        }
+      }
+    },
+    "Watch the price of “%@” and alert you at %@ %@ or below?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obserwować cenę „%@” i powiadomić Cię, gdy spadnie do %@ %@ lub niżej?"
+          }
+        }
+      }
+    },
+    "Follow the news on “%@” and alert you to new headlines?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Śledzić wiadomości o „%@” i powiadamiać o nowych nagłówkach?"
+          }
+        }
+      }
+    },
+    "Stop watching %@?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przestać obserwować %@?"
           }
         }
       }
