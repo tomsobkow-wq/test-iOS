@@ -9,7 +9,8 @@ import UIKit
 /// keeps the refresh token in this phone's Keychain, and never passes it (or any email) to Bolek or to our servers.
 /// Developer builds: launch once with `GOOGLE_CLIENT_ID` set (an iOS OAuth client for bundle com.boleklolek.app).
 enum GoogleConfig {
-    static let scope = "https://www.googleapis.com/auth/gmail.readonly"
+    /// Reading, plus sending the replies the user writes and sends from the composer. Nothing else (no deleting, no settings).
+    static let scope = "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send"
     private static let defaultsKey = "googleClientID"
 
     static var clientID: String? {
@@ -33,6 +34,12 @@ actor GoogleTokens {
     private var access: [String: (token: String, expiry: Date)] = [:]
 
     private static func refreshKey(_ email: String) -> String { "refresh-token:" + email.lowercased() }
+    private static func scopeKey(_ email: String) -> String { "scope:" + email.lowercased() }
+
+    /// Whether this sign-in was granted sending (sign-ins made before replies existed were read-only).
+    func canSend(_ email: String) -> Bool {
+        (Keychain.read(service: Self.service, account: Self.scopeKey(email)) ?? "").contains("gmail.send")
+    }
 
     /// The connected mailboxes. A sign-in saved by the first single-account build is moved over on the way.
     func accounts() async -> [String] {
@@ -70,6 +77,7 @@ actor GoogleTokens {
         }
         let email = try await Self.profileEmail(accessToken: token).lowercased()
         Keychain.write(refresh, service: Self.service, account: Self.refreshKey(email))
+        Keychain.write(scopes, service: Self.service, account: Self.scopeKey(email))
         var list = storedIndex()
         if !list.contains(email) { list.append(email); saveIndex(list) }
         access[email] = (token, Date().addingTimeInterval((reply["expires_in"] as? Double) ?? 3000))
@@ -81,6 +89,7 @@ actor GoogleTokens {
             _ = try? await Self.post("https://oauth2.googleapis.com/revoke", ["token": refresh])
         }
         Keychain.delete(service: Self.service, account: Self.refreshKey(email))
+        Keychain.delete(service: Self.service, account: Self.scopeKey(email))
         access[email] = nil
         saveIndex(storedIndex().filter { $0 != email.lowercased() })
     }
@@ -156,13 +165,17 @@ final class MailConnection: NSObject, ASWebAuthenticationPresentationContextProv
             // The second fixture mailbox is a little older, so the two interleave.
             FixtureMailbox(label: label, now: Date().addingTimeInterval(-Double(index) * 2400))
         }
+        #if DEBUG
+        // BOLEK_DEBUG_MAIL_READONLY=1 makes the made-up mailboxes read-only, to see the "reconnect to send" state.
+        if ProcessInfo.processInfo.environment["BOLEK_DEBUG_MAIL_READONLY"] == "1" { fixtureBoxes.forEach { $0.allowsSending = false } }
+        #endif
         provider = MultiEmailProvider {
             if !fixtureBoxes.isEmpty {
-                return fixtureBoxes.map { MultiEmailProvider.Account(label: $0.label, provider: $0, paging: $0) }
+                return fixtureBoxes.map { MultiEmailProvider.Account(label: $0.label, provider: $0, paging: $0, sending: $0) }
             }
             return await tokens.accounts().map { email in
-                let client = GmailClient(isSignedIn: { true }, accessToken: { try await tokens.validAccessToken(for: email) })
-                return MultiEmailProvider.Account(label: email, provider: client, paging: client)
+                let client = GmailClient(isSignedIn: { true }, accessToken: { try await tokens.validAccessToken(for: email) }, canSend: { await tokens.canSend(email) })
+                return MultiEmailProvider.Account(label: email, provider: client, paging: client, sending: client)
             }
         }
         super.init()

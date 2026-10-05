@@ -38,12 +38,19 @@ public struct EmailMessage: Sendable, Equatable {
     public let body: String
     /// The text of an attached calendar invite (.ics), when there is one.
     public let invite: String?
+    /// What a reply needs to land in the same conversation.
+    public let threadId: String?
+    public let messageID: String?
+    public let references: String?
 
-    public init(summary: EmailSummary, to: String, body: String, invite: String? = nil) {
+    public init(summary: EmailSummary, to: String, body: String, invite: String? = nil, threadId: String? = nil, messageID: String? = nil, references: String? = nil) {
         self.summary = summary
         self.to = to
         self.body = body
         self.invite = invite
+        self.threadId = threadId
+        self.messageID = messageID
+        self.references = references
     }
 
     /// Appointments found by code: the invite if present, otherwise dates with times written in the text.
@@ -87,25 +94,28 @@ extension EmailProviding {
 
 /// Talks straight from the phone to Gmail's API with the `gmail.readonly` permission. The only host it will call is
 /// gmail.googleapis.com; message ids come from the model, so they are checked before they go into a URL.
-public struct GmailClient: EmailProviding, MailboxPaging {
+public struct GmailClient: EmailProviding, MailboxPaging, EmailSending {
     public typealias Transport = @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse)
 
     private let signedIn: @Sendable () async -> Bool
     private let accessToken: @Sendable () async throws -> String
+    private let sendingAllowed: @Sendable () async -> Bool
     private let transport: Transport
     private static let root = "https://gmail.googleapis.com/gmail/v1/users/me"
     private static let base = root + "/messages"
     /// Memory only: no cookies and no cache, so email text is never written to this phone's disk by the networking layer.
     private static let session = URLSession(configuration: .ephemeral)
-    private static let headers = ["From", "Subject", "Date", "Reply-To", "List-Unsubscribe"]
+    private static let headers = ["From", "Subject", "Date", "Reply-To", "List-Unsubscribe", "Message-ID"]
 
     public init(
         isSignedIn: @escaping @Sendable () async -> Bool,
         accessToken: @escaping @Sendable () async throws -> String,
+        canSend: @escaping @Sendable () async -> Bool = { false },
         transport: Transport? = nil
     ) {
         self.signedIn = isSignedIn
         self.accessToken = accessToken
+        self.sendingAllowed = canSend
         self.transport = transport ?? { request in
             var request = request
             request.timeoutInterval = 20
@@ -116,6 +126,32 @@ public struct GmailClient: EmailProviding, MailboxPaging {
     }
 
     public func isConnected() async -> Bool { await signedIn() }
+
+    public func canSend() async -> Bool { await sendingAllowed() }
+
+    public func send(_ email: OutgoingEmail) async throws {
+        let raw = MIMEBuilder.base64URL(try MIMEBuilder.message(email))
+        var payload: [String: Any] = ["raw": raw]
+        if let thread = email.threadId, thread.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) }) { payload["threadId"] = thread }
+        guard let url = URL(string: Self.base + "/send") else { throw ToolError("Could not reach Gmail.") }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(try await accessToken())", forHTTPHeaderField: "Authorization")
+        let response: HTTPURLResponse
+        do { (_, response) = try await transport(request) } catch {
+            throw ToolError("Gmail is not reachable, so nothing was sent. Check the connection and try again.")
+        }
+        switch response.statusCode {
+        case 200..<300: return
+        case 401: throw ToolError("Gmail sign-in expired. Reconnect Gmail from the + menu, then send again.")
+        case 403: throw ToolError("Gmail has not allowed this app to send. Reconnect Gmail from the + menu and allow sending.")
+        case 400: throw ToolError("Gmail did not accept this message. Check the address and try again.")
+        case 429: throw ToolError("Gmail is limiting requests. Try again in a minute.")
+        default: throw ToolError("Gmail answered with an error (\(response.statusCode)); nothing was sent.")
+        }
+    }
 
     public func search(query: String, limit: Int) async throws -> [EmailSummary] {
         try await page(query: query, pageToken: nil, size: max(1, min(limit, 10))).items
@@ -172,7 +208,10 @@ public struct GmailClient: EmailProviding, MailboxPaging {
                     let url = URL(string: "\(Self.base)/\(id)/attachments/\(attachment)"),
                     let reply = try? await get(url), let data = reply["data"] as? String { invite = GmailParsing.decodeBase64URL(data) }
         }
-        return EmailMessage(summary: summary, to: Self.header("To", in: payload) ?? "", body: GmailParsing.body(of: payload), invite: invite)
+        return EmailMessage(
+            summary: summary, to: Self.header("To", in: payload) ?? "", body: GmailParsing.body(of: payload), invite: invite,
+            threadId: object["threadId"] as? String, messageID: Self.header("Message-ID", in: payload), references: Self.header("References", in: payload)
+        )
     }
 
     private func summary(id: String) async throws -> EmailSummary? {

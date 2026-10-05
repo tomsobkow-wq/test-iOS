@@ -200,6 +200,15 @@ extension ApprovalText {
             var when = AppointmentFormat.when(start: start, end: end)
             if let place = text("location"), !place.isEmpty { when += " · " + place }
             return String(localized: "Add “\(title)” to your calendar: \(when)?")
+        case "reschedule_calendar_event":
+            guard let title = text("title"), let startText = text("new_start"), let start = ToolDates.parse(startText) else { return nil }
+            let end = text("new_end").flatMap { ToolDates.parse($0) }
+            let when = end.map { AppointmentFormat.when(start: start, end: $0) } ?? AppointmentFormat.dateLine(start) + " · " + { let f = DateFormatter(); f.timeStyle = .short; f.dateStyle = .none; return f.string(from: start) }()
+            return String(localized: "Move “\(title)” to \(when)?")
+        case "delete_calendar_event":
+            guard let title = text("title") else { return nil }
+            let day = text("on").flatMap { ToolDates.parse($0) }.map { " (" + AppointmentFormat.dateLine($0) + ")" } ?? ""
+            return String(localized: "Delete “\(title)”\(day) from your calendar?")
         case "stop_flight_watch":
             guard let id = text("id") else { return nil }
             return String(localized: "Stop watching flight \(id)?")

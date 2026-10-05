@@ -7,6 +7,8 @@ private let mailAccent = AgentMode.lolek.accent
 struct MailDetailView: View {
     let item: EmailSummary
     let provider: MultiEmailProvider
+    let connection: MailConnection
+    var writeWithLolek: ((String, ComposeDraft) async throws -> String)?
     var onSummarise: () -> Void
     var onAsk: () -> Void
 
@@ -17,6 +19,9 @@ struct MailDetailView: View {
     @State private var appointments: [AppointmentCandidate] = []
     @State private var states: [String: AppointmentCard.State] = [:]
     @State private var editing: AppointmentCandidate?
+    @State private var changingID: String?
+    @State private var replyDraft: ComposeDraft?
+    @State private var calendarError: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,7 +34,9 @@ struct MailDetailView: View {
                     ForEach(appointments) { candidate in
                         AppointmentCard(
                             candidate: candidate, state: states[candidate.id] ?? .idle,
-                            onAdd: { editing = candidate },
+                            onAdd: { changingID = nil; editing = candidate },
+                            onChange: { if case .saved(let id, _) = states[candidate.id] { changingID = id; editing = candidate } },
+                            onRemove: { remove(candidate) },
                             onOpenCalendar: { openCalendar(at: candidate.start) }
                         )
                     }
@@ -48,10 +55,18 @@ struct MailDetailView: View {
         .background(Color(.systemBackground))
         .tint(mailAccent)
         .presentationDragIndicator(.visible)
+        .sheet(item: $replyDraft) { draft in
+            ComposeEmailView(draft: draft, connection: connection, writeWithLolek: writeWithLolek)
+                .presentationDetents([.large])
+        }
+        .alert("Could not change the calendar", isPresented: Binding(get: { calendarError != nil }, set: { if !$0 { calendarError = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: { Text(verbatim: calendarError ?? "") }
         .task { await load() }
         .sheet(item: $editing) { candidate in
-            AppointmentSheet(candidate: candidate) { outcome, start in
-                states[candidate.id] = outcome == .added ? .added : .alreadyThere
+            AppointmentSheet(candidate: candidate, existingID: changingID) { outcome, _ in
+                if case .added(let id) = outcome { states[candidate.id] = .saved(id: id, alreadyThere: false) }
+                else { states[candidate.id] = .saved(id: outcome.id, alreadyThere: changingID == nil) }
             }
         }
     }
@@ -92,6 +107,7 @@ struct MailDetailView: View {
                 .accessibilityIdentifier("mail-summarise")
                 outlined("Ask Lolek") { dismiss(); onAsk() }
                 outlined("Reply") { reply() }
+                    .accessibilityIdentifier("mail-reply")
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
@@ -115,18 +131,23 @@ struct MailDetailView: View {
         } catch { failure = (error as? ToolError)?.message ?? error.localizedDescription }
     }
 
+    private func remove(_ candidate: AppointmentCandidate) {
+        guard case .saved(let id, _) = states[candidate.id] else { return }
+        Task {
+            do { try await CalendarAdder.remove(id: id); states[candidate.id] = .idle }
+            catch { calendarError = (error as? ToolError)?.message ?? error.localizedDescription }
+        }
+    }
+
     /// Opens the Calendar app on that day.
     private func openCalendar(at date: Date) {
         if let url = URL(string: "calshow:\(Int(date.timeIntervalSinceReferenceDate))") { openURL(url) }
     }
 
-    /// Opens the Mail app with the draft addressed; the user writes and sends it there.
+    /// Opens the composer, addressed to the sender and in the same conversation; the user writes (or has Lolek write) and sends it here.
     private func reply() {
-        var components = URLComponents()
-        components.scheme = "mailto"
-        components.path = item.replyAddress
-        let subject = item.subject.lowercased().hasPrefix("re:") ? item.subject : "Re: " + item.subject
-        components.queryItems = [URLQueryItem(name: "subject", value: subject)]
-        if let url = components.url { openURL(url) }
+        let account = item.account ?? (connection.accounts.count == 1 ? connection.accounts.first : nil)
+        let original = message ?? EmailMessage(summary: item, to: "", body: item.snippet)
+        replyDraft = ComposeDraft(outgoing: OutgoingEmail.reply(to: original, from: account ?? ""), original: original, account: account)
     }
 }

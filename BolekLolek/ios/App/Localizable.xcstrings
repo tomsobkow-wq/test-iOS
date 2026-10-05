@@ -771,16 +771,6 @@
         }
       }
     },
-    "Already in your calendar": {
-      "localizations": {
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Już w kalendarzu"
-          }
-        }
-      }
-    },
     "Add to Calendar": {
       "localizations": {
         "pl": {
@@ -877,6 +867,236 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nie znaleziono zaproszeń ani wizyt."
+          }
+        }
+      }
+    },
+    "Change time or details": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmień termin lub szczegóły"
+          }
+        }
+      }
+    },
+    "Open in Calendar": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz w Kalendarzu"
+          }
+        }
+      }
+    },
+    "Remove from calendar": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń z kalendarza"
+          }
+        }
+      }
+    },
+    "In your calendar": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W Twoim kalendarzu"
+          }
+        }
+      }
+    },
+    "Change appointment": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zmień wizytę"
+          }
+        }
+      }
+    },
+    "Save changes": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapisz zmiany"
+          }
+        }
+      }
+    },
+    "Could not change the calendar": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się zmienić kalendarza"
+          }
+        }
+      }
+    },
+    "Move “%@” to %@?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przenieść „%@” na %@?"
+          }
+        }
+      }
+    },
+    "Delete “%@”%@ from your calendar?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usunąć „%@”%@ z kalendarza?"
+          }
+        }
+      }
+    },
+    "New email": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nowy mail"
+          }
+        }
+      }
+    },
+    "From": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Od"
+          }
+        }
+      }
+    },
+    "To": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do"
+          }
+        }
+      }
+    },
+    "Subject": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temat"
+          }
+        }
+      }
+    },
+    "Choose account": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wybierz konto"
+          }
+        }
+      }
+    },
+    "Tell Lolek what to say…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Powiedz Lolkowi, co napisać…"
+          }
+        }
+      }
+    },
+    "Write": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Napisz"
+          }
+        }
+      }
+    },
+    "The original message is quoted below your text.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oryginalna wiadomość zostanie zacytowana pod Twoim tekstem."
+          }
+        }
+      }
+    },
+    "Sent from your Gmail, straight from this iPhone.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysłane z Twojego Gmaila, prosto z tego iPhone'a."
+          }
+        }
+      }
+    },
+    "This account is connected for reading only. Reconnect it and allow sending to send from the app.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To konto jest połączone tylko do czytania. Połącz je ponownie i zezwól na wysyłanie, aby wysyłać z aplikacji."
+          }
+        }
+      }
+    },
+    "Reconnect Gmail": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Połącz Gmaila ponownie"
+          }
+        }
+      }
+    },
+    "Open in Mail app": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz w aplikacji Mail"
+          }
+        }
+      }
+    },
+    "Sent": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wysłano"
+          }
+        }
+      }
+    },
+    "Lolek could not write that. Try again, or write it yourself.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lolek nie zdołał tego napisać. Spróbuj ponownie albo napisz samodzielnie."
           }
         }
       }

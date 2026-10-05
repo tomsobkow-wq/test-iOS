@@ -53,10 +53,18 @@ struct RootView: View {
         }
         .tint(model.mode.accent)
         .animation(.easeInOut(duration: 0.25), value: model.mode)
+        .sheet(item: Binding(get: { model.compose.draft }, set: { model.compose.draft = $0 })) { draft in
+            ComposeEmailView(
+                draft: draft, connection: model.mail,
+                writeWithLolek: model.lolekSetup.isReady ? { instruction, draft in try await model.writeReply(instruction: instruction, draft: draft) } : nil
+            )
+            .presentationDetents([.large])
+        }
         .sheet(isPresented: $model.showMail) {
             MailScreen(
                 model: model.mailModel,
                 onClose: { model.showMail = false },
+                writeWithLolek: model.lolekSetup.isReady ? { instruction, draft in try await model.writeReply(instruction: instruction, draft: draft) } : nil,
                 onSummarise: { model.discussEmail($0, prompt: String(localized: "Summarise this email.")) },
                 onAsk: { model.askAboutEmail($0) }
             )

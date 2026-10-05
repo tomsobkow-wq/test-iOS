@@ -7,10 +7,12 @@ public struct MultiEmailProvider: EmailProviding {
         public let label: String
         public let provider: any EmailProviding
         public let paging: (any MailboxPaging)?
-        public init(label: String, provider: any EmailProviding, paging: (any MailboxPaging)? = nil) {
+        public let sending: (any EmailSending)?
+        public init(label: String, provider: any EmailProviding, paging: (any MailboxPaging)? = nil, sending: (any EmailSending)? = nil) {
             self.label = label
             self.provider = provider
             self.paging = paging
+            self.sending = sending
         }
     }
 
@@ -63,6 +65,35 @@ public struct MultiEmailProvider: EmailProviding {
         return MailFeed(sources: sources, query: query, labelled: all.count > 1)
     }
 
+    /// Sends through the mailbox whose address is `account` (or the only one). Fails clearly when that sign-in cannot send.
+    public func send(_ email: OutgoingEmail, from account: String?) async throws {
+        let all = await accounts()
+        let wanted = account?.lowercased()
+        guard let chosen = Self.pick(all, wanted: wanted) else {
+            throw ToolError("Choose which Gmail account to send from.")
+        }
+        guard let sending = chosen.sending, await sending.canSend() else {
+            throw ToolError("\(chosen.label) was connected for reading only. Reconnect it from the + menu and allow sending.")
+        }
+        var outgoing = email
+        outgoing.from = chosen.label
+        try await sending.send(outgoing)
+    }
+
+    /// The named mailbox; with no name only when exactly one is connected. Never a guess between several: mail must not go out from the wrong address.
+    private static func pick(_ all: [Account], wanted: String?) -> Account? {
+        if let wanted { return all.first { $0.label.lowercased() == wanted } }
+        return all.count == 1 ? all[0] : nil
+    }
+
+    /// Whether the given mailbox (or the only one) may send.
+    public func canSend(from account: String?) async -> Bool {
+        let all = await accounts()
+        let wanted = account?.lowercased()
+        guard let chosen = Self.pick(all, wanted: wanted) else { return false }
+        return await chosen.sending?.canSend() ?? false
+    }
+
     public func accountLabels() async -> [String] { await accounts().map(\.label) }
 
     public func unreadCount() async -> Int? {
@@ -85,7 +116,7 @@ public struct MultiEmailProvider: EmailProviding {
         return EmailMessage(
             summary: EmailSummary(id: id, from: summary.from, subject: summary.subject, date: summary.date, snippet: summary.snippet,
                                   isUnread: summary.isUnread, account: list.count > 1 ? list[index].label : nil),
-            to: email.to, body: email.body, invite: email.invite
+            to: email.to, body: email.body, invite: email.invite, threadId: email.threadId, messageID: email.messageID, references: email.references
         )
     }
 }

@@ -433,4 +433,77 @@ final class BolekFlowUITests: XCTestCase {
         app.launch()
         Thread.sleep(forTimeInterval: 6)
     }
+
+    /// Sets an alarm, lists it, looks at the Clock app, then cancels it through chat.
+    func testAlarmListedCancelledAndWhatClockShows() throws {
+        app.terminate()
+        app.launchEnvironment["BOLEK_DEBUG_CANCEL_ALARMS"] = "1"
+        app.launch()
+        Thread.sleep(forTimeInterval: 5)
+        var seconds = askHandlingPrompts("Set an alarm for 7:15 called Lolek test alarm")
+        shot("90-alarm-set \(Int(seconds))s")
+        seconds = askHandlingPrompts("What alarms do I have?")
+        shot("91-alarm-list \(Int(seconds))s")
+        let clock = XCUIApplication(bundleIdentifier: "com.apple.mobiletimer")
+        clock.launch()
+        Thread.sleep(forTimeInterval: 3)
+        let alarmTab = clock.tabBars.buttons.element(boundBy: 1)
+        if alarmTab.exists { alarmTab.tap() }
+        Thread.sleep(forTimeInterval: 2)
+        let shotClock = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        shotClock.name = "92-clock-app-alarms"
+        shotClock.lifetime = .keepAlways
+        add(shotClock)
+        app.activate()
+        Thread.sleep(forTimeInterval: 2)
+        seconds = askHandlingPrompts("Cancel the Lolek test alarm")
+        shot("93-alarm-cancel \(Int(seconds))s")
+        seconds = askHandlingPrompts("What alarms do I have?")
+        shot("94-alarm-list-after \(Int(seconds))s")
+    }
+
+    private func openFixtureReplyComposer(readOnly: Bool) {
+        app.terminate()
+        app.launchEnvironment["BOLEK_DEBUG_MAIL_FIXTURE"] = "1"
+        if readOnly { app.launchEnvironment["BOLEK_DEBUG_MAIL_READONLY"] = "1" }
+        app.launch()
+        XCTAssertTrue(app.buttons["mail-button"].waitForExistence(timeout: 15), "mail button")
+        app.buttons["mail-button"].tap()
+        Thread.sleep(forTimeInterval: 3)
+        app.buttons["People"].firstMatch.tap()
+        Thread.sleep(forTimeInterval: 2)
+        let row = app.buttons.containing(NSPredicate(format: "label CONTAINS 'Weekend'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 8), "Weekend row")
+        row.tap()
+        Thread.sleep(forTimeInterval: 3)
+        app.buttons["mail-reply"].tap()
+        Thread.sleep(forTimeInterval: 2)
+    }
+
+    /// Reply inside the app (made-up mailbox): fields, quote, Send; nothing real is sent.
+    func testReplyComposerSendsInsideTheApp() throws {
+        openFixtureReplyComposer(readOnly: false)
+        shot("100-composer-empty")
+        let body = app.textViews["compose-body"]
+        XCTAssertTrue(body.waitForExistence(timeout: 5), "body field")
+        body.tap()
+        body.typeText("Super, dziękuję! Bierzemy ten apartament.")
+        shot("101-composer-typed")
+        let send = app.buttons["compose-send"]
+        XCTAssertTrue(send.isEnabled, "Send enabled")
+        send.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["compose-sent"].waitForExistence(timeout: 6), "Sent confirmation")
+        shot("102-composer-sent")
+    }
+
+    /// A sign-in that can only read is told so, and Send stays off.
+    func testReadOnlySignInShowsReconnectAndKeepsSendOff() throws {
+        openFixtureReplyComposer(readOnly: true)
+        XCTAssertTrue(app.descendants(matching: .any)["compose-readonly-banner"].waitForExistence(timeout: 5), "banner")
+        let body = app.textViews["compose-body"]
+        body.tap()
+        body.typeText("Test")
+        XCTAssertFalse(app.buttons["compose-send"].isEnabled, "Send must stay off")
+        shot("103-composer-readonly")
+    }
 }

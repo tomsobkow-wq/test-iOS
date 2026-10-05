@@ -3,8 +3,8 @@ import Foundation
 public enum EmailToolbox {
     /// Email is read on the phone by Lolek only. Bolek runs in the cloud and never gets these tools,
     /// and nothing here sends mail content to our servers.
-    public static func tools(provider: any EmailProviding, opener: any URLOpening, clock: ToolClock = ToolClock()) -> [any Tool] {
-        [SearchEmailTool(provider: provider, clock: clock), ReadEmailTool(provider: provider, clock: clock), ComposeEmailTool(opener: opener)]
+    public static func tools(provider: any EmailProviding, opener: any URLOpening, composer: (any ComposeSink)? = nil, clock: ToolClock = ToolClock()) -> [any Tool] {
+        [SearchEmailTool(provider: provider, clock: clock), ReadEmailTool(provider: provider, clock: clock), ComposeEmailTool(opener: opener, sink: composer)]
     }
 }
 
@@ -145,26 +145,51 @@ public struct ReadEmailTool: Tool, ConditionallyAvailable {
     }
 }
 
+/// What the model asked to write. The app shows it in its own composer; nothing is sent until the user taps Send there.
+public struct EmailDraftRequest: Sendable, Equatable {
+    public let to: String
+    public let subject: String
+    public let body: String
+    public init(to: String, subject: String, body: String) {
+        self.to = to
+        self.subject = subject
+        self.body = body
+    }
+}
+
+public protocol ComposeSink: Sendable {
+    func present(_ draft: EmailDraftRequest) async
+}
+
 public struct ComposeEmailTool: Tool {
     public let name = "compose_email"
     public let description = LocalizedText(
-        en: "Prepare an email. Opens the Mail app with the recipient, subject and text filled in; the user reviews it and taps Send.",
-        pl: "Przygotuj maila. Otwiera aplikację Mail z gotowym adresatem, tematem i treścią; użytkownik sprawdza i sam naciska Wyślij."
+        en: "Write an email for the user. Opens the app's composer with the recipient, subject and text filled in; the user reads it, edits it if they like and taps Send. Nothing is sent by this tool.",
+        pl: "Napisz maila dla użytkownika. Otwiera edytor aplikacji z adresatem, tematem i treścią; użytkownik czyta, w razie potrzeby poprawia i sam naciska Wyślij. To narzędzie niczego nie wysyła."
     )
     public let parametersSchema = #"{"type":"object","properties":{"to":{"type":"string","description":"Email address"},"subject":{"type":"string"},"body":{"type":"string"}},"required":["to","body"]}"#
     public let tier = ToolTier.lolek
-    public let risk = ToolRisk.send
+    /// With the in-app composer this only opens a draft (the Send tap is the approval); the old route into the Mail app asks first.
+    public var risk: ToolRisk { sink == nil ? .send : .writeLocal }
     let opener: any URLOpening
+    let sink: (any ComposeSink)?
 
     struct Args: Decodable { let to: String; let subject: String?; let body: String }
 
-    public init(opener: any URLOpening) { self.opener = opener }
+    public init(opener: any URLOpening, sink: (any ComposeSink)? = nil) {
+        self.opener = opener
+        self.sink = sink
+    }
 
     public func run(argumentsJSON: String) async throws -> String {
         let args = try ToolArguments.decode(Args.self, from: argumentsJSON)
         let address = args.to.trimmingCharacters(in: .whitespaces)
         guard address.contains("@"), address.contains("."), !address.contains(" "), !address.contains("?"), !address.contains(",") else {
             throw ToolError("\"\(args.to)\" is not a single email address. Ask the user for the address.")
+        }
+        if let sink {
+            await sink.present(EmailDraftRequest(to: address, subject: args.subject ?? "", body: args.body))
+            return "The email to \(address) is open in the app for the user to read and edit. It is NOT sent: the user taps Send in the composer."
         }
         var components = URLComponents()
         components.scheme = "mailto"

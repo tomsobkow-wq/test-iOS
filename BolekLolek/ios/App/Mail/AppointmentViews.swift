@@ -5,16 +5,24 @@ private let accent = AgentMode.lolek.accent
 
 /// Writes an appointment from an email into the iPhone calendar, unless it is already there.
 enum CalendarAdder {
-    enum Outcome { case added, alreadyThere }
+    enum Outcome: Equatable { case added(String), alreadyThere(String)
+        var id: String { switch self { case .added(let id), .alreadyThere(let id): id } }
+    }
 
     static func add(title: String, start: Date, end: Date, location: String?) async throws -> Outcome {
         let calendar = AppServices.device.calendar
-        // A reminder that is already in the calendar must not be added twice.
+        // An event that is already in the calendar must not be added twice.
         let existing = (try? await calendar.events(from: start.addingTimeInterval(-3_600), to: end.addingTimeInterval(3_600))) ?? []
-        if existing.contains(where: { $0.title.caseInsensitiveCompare(title) == .orderedSame && abs($0.start.timeIntervalSince(start)) < 60 }) { return .alreadyThere }
-        _ = try await calendar.addEvent(title: title, start: start, end: end, location: location)
-        return .added
+        if let same = existing.first(where: { $0.title.caseInsensitiveCompare(title) == .orderedSame && abs($0.start.timeIntervalSince(start)) < 60 }) { return .alreadyThere(same.id) }
+        let event = try await calendar.addEvent(title: title, start: start, end: end, location: location)
+        return .added(event.id)
     }
+
+    static func update(id: String, title: String, start: Date, end: Date, location: String?) async throws {
+        _ = try await AppServices.device.calendar.updateEvent(id: id, title: title, start: start, end: end, location: location ?? "")
+    }
+
+    static func remove(id: String) async throws { try await AppServices.device.calendar.deleteEvent(id: id) }
 }
 
 enum AppointmentFormat {
@@ -42,9 +50,11 @@ struct AppointmentCard: View {
     let candidate: AppointmentCandidate
     let state: State
     var onAdd: () -> Void
+    var onChange: () -> Void
+    var onRemove: () -> Void
     var onOpenCalendar: () -> Void
 
-    enum State { case idle, added, alreadyThere }
+    enum State: Equatable { case idle, saved(id: String, alreadyThere: Bool) }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -80,10 +90,18 @@ struct AppointmentCard: View {
                         .overlay(Capsule().strokeBorder(accent, lineWidth: 1.5))
                 }
                 .accessibilityIdentifier("appointment-add")
-            case .added, .alreadyThere:
-                Button(action: onOpenCalendar) {
-                    Label(state == .added ? "Added" : "Already in your calendar", systemImage: "checkmark.circle.fill")
-                        .font(.system(size: 13, weight: .semibold)).foregroundStyle(accent).labelStyle(.titleAndIcon)
+            case .saved(_, let alreadyThere):
+                Menu {
+                    Button(action: onChange) { Label("Change time or details", systemImage: "calendar.badge.clock") }
+                    Button(action: onOpenCalendar) { Label("Open in Calendar", systemImage: "calendar") }
+                    Button(role: .destructive, action: onRemove) { Label("Remove from calendar", systemImage: "trash") }
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "checkmark.circle.fill")
+                        Text(alreadyThere ? "In your calendar" : "Added")
+                        Image(systemName: "chevron.down").font(.system(size: 10, weight: .semibold))
+                    }
+                    .font(.system(size: 13, weight: .semibold)).foregroundStyle(accent)
                 }
                 .accessibilityIdentifier("appointment-added")
             }
@@ -94,6 +112,8 @@ struct AppointmentCard: View {
 /// Details to check before the event goes into the calendar.
 struct AppointmentSheet: View {
     let candidate: AppointmentCandidate
+    /// Set when the event is already in the calendar and this sheet changes it instead of adding it.
+    var existingID: String?
     var onSaved: (CalendarAdder.Outcome, Date) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -104,8 +124,9 @@ struct AppointmentSheet: View {
     @State private var error: String?
     @State private var saving = false
 
-    init(candidate: AppointmentCandidate, onSaved: @escaping (CalendarAdder.Outcome, Date) -> Void) {
+    init(candidate: AppointmentCandidate, existingID: String? = nil, onSaved: @escaping (CalendarAdder.Outcome, Date) -> Void) {
         self.candidate = candidate
+        self.existingID = existingID
         self.onSaved = onSaved
         _title = State(initialValue: candidate.title)
         _start = State(initialValue: candidate.start)
@@ -115,7 +136,7 @@ struct AppointmentSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Add to Calendar").font(.system(size: 22, weight: .bold)).padding(.top, 8)
+            Text(existingID == nil ? "Add to Calendar" : "Change appointment").font(.system(size: 22, weight: .bold)).padding(.top, 8)
             VStack(spacing: 0) {
                 field("Title") { TextField("Title", text: $title).font(.system(size: 16)).accessibilityIdentifier("appointment-title") }
                 Divider()
@@ -134,7 +155,7 @@ struct AppointmentSheet: View {
                         .padding(.horizontal, 22).frame(minHeight: 48).overlay(Capsule().strokeBorder(accent, lineWidth: 1.5))
                 }
                 Button { Task { await save() } } label: {
-                    Text("Add to Calendar").font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
+                    Text(existingID == nil ? "Add to Calendar" : "Save changes").font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 48).background(accent, in: Capsule())
                 }
                 .disabled(saving || title.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -162,7 +183,14 @@ struct AppointmentSheet: View {
         defer { saving = false }
         do {
             let place = location.trimmingCharacters(in: .whitespaces)
-            let outcome = try await CalendarAdder.add(title: title.trimmingCharacters(in: .whitespaces), start: start, end: end, location: place.isEmpty ? nil : place)
+            let name = title.trimmingCharacters(in: .whitespaces)
+            let outcome: CalendarAdder.Outcome
+            if let existingID {
+                try await CalendarAdder.update(id: existingID, title: name, start: start, end: end, location: place.isEmpty ? nil : place)
+                outcome = .alreadyThere(existingID)
+            } else {
+                outcome = try await CalendarAdder.add(title: name, start: start, end: end, location: place.isEmpty ? nil : place)
+            }
             onSaved(outcome, start)
             dismiss()
         } catch {

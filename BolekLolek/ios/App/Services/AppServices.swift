@@ -22,6 +22,7 @@ enum AppServices {
         calendar: EventKitCalendar(),
         contacts: SystemContacts(),
         notifications: LocalNotifications(),
+        alarms: SystemAlarms(),
         urlOpener: SystemURLOpener(),
         spending: spending
     )

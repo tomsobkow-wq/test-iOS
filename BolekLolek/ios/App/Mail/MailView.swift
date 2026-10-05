@@ -8,6 +8,7 @@ private let mailAccent = AgentMode.lolek.accent
 struct MailScreen: View {
     @Bindable var model: MailModel
     var onClose: () -> Void
+    var writeWithLolek: ((String, ComposeDraft) async throws -> String)?
     var onSummarise: (EmailSummary) -> Void
     var onAsk: (EmailSummary) -> Void
 
@@ -25,7 +26,7 @@ struct MailScreen: View {
         .tint(mailAccent)
         .task { model.reload() }
         .sheet(item: $selected) { item in
-            MailDetailView(item: item, provider: model.connection.provider, onSummarise: { onSummarise(item) }, onAsk: { onAsk(item) })
+            MailDetailView(item: item, provider: model.connection.provider, connection: model.connection, writeWithLolek: writeWithLolek, onSummarise: { onSummarise(item) }, onAsk: { onAsk(item) })
         }
     }
 

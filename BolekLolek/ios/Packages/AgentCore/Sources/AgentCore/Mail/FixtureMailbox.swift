@@ -2,7 +2,7 @@ import Foundation
 
 /// A made-up mailbox: invented people, companies and messages in Polish and English. Used by tests and by the debug
 /// screenshots of the Mail screen, so nothing real is ever shown. It understands the few Gmail search words the app builds.
-public final class FixtureMailbox: EmailProviding, MailboxPaging, @unchecked Sendable {
+public final class FixtureMailbox: EmailProviding, MailboxPaging, EmailSending, @unchecked Sendable {
     struct Item {
         let id: String
         let minutesAgo: Int
@@ -70,6 +70,19 @@ public final class FixtureMailbox: EmailProviding, MailboxPaging, @unchecked Sen
         items = list.sorted { $0.minutesAgo < $1.minutesAgo }
     }
 
+    private let sentLock = NSLock()
+    private var sentList: [OutgoingEmail] = []
+    /// Everything this made-up mailbox was asked to send. Nothing leaves the process.
+    public var sent: [OutgoingEmail] { sentLock.lock(); defer { sentLock.unlock() }; return sentList }
+    public var allowsSending = true
+
+    public func canSend() async -> Bool { allowsSending }
+
+    public func send(_ email: OutgoingEmail) async throws {
+        _ = try MIMEBuilder.message(email)  // the real builder still validates it
+        sentLock.lock(); sentList.append(email); sentLock.unlock()
+    }
+
     public func isConnected() async -> Bool { true }
     public func accountLabels() async -> [String] { [label] }
     public func unreadCount() async -> Int? { items.filter(\.unread).count }
@@ -91,7 +104,7 @@ public final class FixtureMailbox: EmailProviding, MailboxPaging, @unchecked Sen
 
     public func message(id: String) async throws -> EmailMessage {
         guard let item = items.first(where: { $0.id == id }) else { throw ToolError("That email no longer exists.") }
-        return EmailMessage(summary: summary(item), to: label, body: item.body, invite: item.invite)
+        return EmailMessage(summary: summary(item), to: label, body: item.body, invite: item.invite, threadId: "t\(item.id)", messageID: "<\(item.id)@example.com>", references: nil)
     }
 
     private func summary(_ item: Item) -> EmailSummary {

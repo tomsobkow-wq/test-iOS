@@ -18,7 +18,7 @@ struct LocalNotifications: NotificationScheduling {
         // Alarms and timers ring like the Clock app where iOS allows it; everything else (and any failure) is a notification.
         if #available(iOS 26.0, *), notification.isAlarm, notification.repeats == nil {
             do {
-                try await AlarmRinger.schedule(title: notification.title, at: notification.fireDate)
+                try await AlarmRinger.schedule(title: notification.title, at: notification.fireDate, isTimer: notification.isTimer)
                 #if DEBUG
                 await NotificationDebug.dump(reason: "alarm scheduled for \(notification.fireDate)")
                 #endif
@@ -54,7 +54,11 @@ struct LocalNotifications: NotificationScheduling {
             dateMatching: calendar.dateComponents(components, from: notification.fireDate),
             repeats: notification.repeats != nil
         )
-        try await center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger))
+        let identifier = UUID().uuidString
+        try await center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: trigger))
+        if notification.repeats == nil {
+            AlarmLedger.record(.init(id: identifier, title: notification.title, fireDate: notification.fireDate, isTimer: notification.isTimer, usesAlarmKit: false))
+        }
         #if DEBUG
         await NotificationDebug.dump(reason: "scheduled for \(notification.fireDate)")
         #endif
@@ -121,8 +125,30 @@ final class EventKitCalendar: CalendarProviding, @unchecked Sendable {
         try await authorize()
         let predicate = store.predicateForEvents(withStart: from, end: to, calendars: nil)
         return store.events(matching: predicate).map {
-            CalendarEventInfo(title: $0.title ?? "Untitled", start: $0.startDate, end: $0.endDate, location: $0.location, isAllDay: $0.isAllDay)
+            CalendarEventInfo(title: $0.title ?? "Untitled", start: $0.startDate, end: $0.endDate, location: $0.location, isAllDay: $0.isAllDay, id: $0.eventIdentifier ?? "")
         }
+    }
+
+    func updateEvent(id: String, title: String?, start: Date?, end: Date?, location: String?) async throws -> CalendarEventInfo {
+        try await authorize()
+        guard let event = store.event(withIdentifier: id) else { throw ToolError("That event is no longer in the calendar.") }
+        let duration = event.endDate.timeIntervalSince(event.startDate)
+        if let title { event.title = title }
+        if let start {
+            event.startDate = start
+            // Moving an event keeps its length unless a new end is given.
+            event.endDate = end ?? start.addingTimeInterval(duration)
+        } else if let end { event.endDate = end }
+        if let location { event.location = location }
+        guard event.endDate > event.startDate else { throw ToolError("The end must be after the start.") }
+        try store.save(event, span: .thisEvent)
+        return CalendarEventInfo(title: event.title ?? "Untitled", start: event.startDate, end: event.endDate, location: event.location, isAllDay: event.isAllDay, id: id)
+    }
+
+    func deleteEvent(id: String) async throws {
+        try await authorize()
+        guard let event = store.event(withIdentifier: id) else { throw ToolError("That event is no longer in the calendar.") }
+        try store.remove(event, span: .thisEvent)
     }
 
     func addEvent(title: String, start: Date, end: Date, location: String?) async throws -> CalendarEventInfo {
@@ -137,7 +163,7 @@ final class EventKitCalendar: CalendarProviding, @unchecked Sendable {
         event.endDate = end
         event.location = location
         try store.save(event, span: .thisEvent)
-        return CalendarEventInfo(title: title, start: start, end: end, location: location)
+        return CalendarEventInfo(title: title, start: start, end: end, location: location, id: event.eventIdentifier ?? "")
     }
 }
 

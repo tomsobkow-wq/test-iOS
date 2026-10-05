@@ -18,9 +18,12 @@ public enum DeviceToolbox {
             GetWeatherTool(weather: services.weather),
             SetAlarmTool(notifications: services.notifications, clock: clock),
             SetTimerTool(notifications: services.notifications, clock: clock),
+        ] + (services.alarms.map { [ListAlarmsTool(alarms: $0, clock: clock), CancelAlarmTool(alarms: $0, clock: clock)] as [any Tool] } ?? []) + [
             AddReminderTool(notifications: services.notifications, clock: clock),
             ListCalendarEventsTool(calendar: services.calendar, clock: clock),
             AddCalendarEventTool(calendar: services.calendar, clock: clock),
+            RescheduleCalendarEventTool(calendar: services.calendar, clock: clock),
+            DeleteCalendarEventTool(calendar: services.calendar, clock: clock),
             FindContactTool(contacts: services.contacts),
             TextContactTool(contacts: services.contacts, opener: services.urlOpener),
             CallContactTool(contacts: services.contacts, opener: services.urlOpener),
@@ -87,7 +90,7 @@ public struct SetAlarmTool: Tool {
         guard date > clock.now() else { throw ToolError("That time is in the past.") }
         let label = args.label?.isEmpty == false ? args.label! : "Alarm"
         try await notifications.schedule(ScheduledNotification(title: label, fireDate: date, isAlarm: true))
-        return "Alarm set for \(ToolDates.describe(date, calendar: clock.calendar))."
+        return "Alarm \"\(label)\" set for \(ToolDates.describe(date, calendar: clock.calendar)). It will ring like the Clock app, but it is managed here, not listed in the Clock app: the user can ask to see or cancel their alarms."
     }
 }
 
@@ -110,8 +113,71 @@ public struct SetTimerTool: Tool {
         guard (1...86_400).contains(args.seconds) else { throw ToolError("A timer must be between 1 second and 24 hours.") }
         let fire = clock.now().addingTimeInterval(TimeInterval(args.seconds))
         let label = args.label?.isEmpty == false ? args.label! : "Timer"
-        try await notifications.schedule(ScheduledNotification(title: label, fireDate: fire, isAlarm: true))
+        try await notifications.schedule(ScheduledNotification(title: label, fireDate: fire, isAlarm: true, isTimer: true))
         return "Timer set for \(args.seconds / 60) min \(args.seconds % 60) s."
+    }
+}
+
+public struct ListAlarmsTool: Tool {
+    public let name = "list_alarms"
+    public let description = LocalizedText(
+        en: "List the alarms and timers set through this app that have not rung yet.",
+        pl: "Wyświetl budziki i minutniki ustawione przez tę aplikację, które jeszcze nie zadzwoniły."
+    )
+    public let parametersSchema = #"{"type":"object","properties":{}}"#
+    public let tier = ToolTier.both
+    public let risk = ToolRisk.read
+    let alarms: any AlarmManaging
+    let clock: ToolClock
+
+    public init(alarms: any AlarmManaging, clock: ToolClock) { self.alarms = alarms; self.clock = clock }
+
+    public func run(argumentsJSON: String) async throws -> String {
+        let list = await alarms.pending().sorted { $0.fireDate < $1.fireDate }
+        guard !list.isEmpty else { return "There are no alarms or timers waiting." }
+        return list.map { "- [\($0.id.prefix(8))] \($0.isTimer ? "timer" : "alarm") \"\($0.title)\": \(ToolDates.describe($0.fireDate, calendar: clock.calendar))" }.joined(separator: "\n")
+    }
+}
+
+public struct CancelAlarmTool: Tool {
+    public let name = "cancel_alarm"
+    public let description = LocalizedText(
+        en: "Cancel an alarm or timer set through this app. Give its label or time, or all=true to cancel every one.",
+        pl: "Anuluj budzik lub minutnik ustawiony przez tę aplikację. Podaj jego nazwę lub godzinę, albo all=true, aby anulować wszystkie."
+    )
+    public let parametersSchema = #"{"type":"object","properties":{"label":{"type":"string"},"time":{"type":"string","description":"HH:mm or ISO date-time of the alarm"},"all":{"type":"boolean"}}}"#
+    public let tier = ToolTier.both
+    public let risk = ToolRisk.writeLocal
+    let alarms: any AlarmManaging
+    let clock: ToolClock
+
+    public init(alarms: any AlarmManaging, clock: ToolClock) { self.alarms = alarms; self.clock = clock }
+
+    struct Args: Decodable { let label: String?; let time: String?; let all: LooseBool? }
+
+    public func run(argumentsJSON: String) async throws -> String {
+        let args = (try? ToolArguments.decode(Args.self, from: argumentsJSON)) ?? Args(label: nil, time: nil, all: nil)
+        let list = await alarms.pending()
+        guard !list.isEmpty else { return "There are no alarms or timers to cancel." }
+        var matches = list
+        if args.all?.value != true {
+            if let label = args.label?.trimmingCharacters(in: .whitespaces), !label.isEmpty {
+                matches = matches.filter { $0.title.folded.contains(label.folded) }
+            }
+            if let time = args.time, let date = ToolDates.parse(time, now: clock.now(), calendar: clock.calendar) {
+                let hasDay = time.count > 5
+                matches = matches.filter { hasDay ? abs($0.fireDate.timeIntervalSince(date)) < 90 : (clock.calendar.component(.hour, from: $0.fireDate) == clock.calendar.component(.hour, from: date) && clock.calendar.component(.minute, from: $0.fireDate) == clock.calendar.component(.minute, from: date)) }
+            }
+            if args.label == nil, args.time == nil, list.count > 1 {
+                throw ToolError("There are \(list.count) alarms or timers. Ask which one, or cancel all: \(list.map { "\($0.title) \(ToolDates.describe($0.fireDate, calendar: clock.calendar))" }.joined(separator: "; "))")
+            }
+        }
+        guard !matches.isEmpty else { throw ToolError("No alarm or timer matches that. Waiting: \(list.map { "\($0.title) \(ToolDates.describe($0.fireDate, calendar: clock.calendar))" }.joined(separator: "; "))") }
+        if matches.count > 1, args.all?.value != true {
+            throw ToolError("\(matches.count) match: \(matches.map { "\($0.title) \(ToolDates.describe($0.fireDate, calendar: clock.calendar))" }.joined(separator: "; ")). Ask which one.")
+        }
+        for item in matches { try await alarms.cancel(id: item.id) }
+        return "Cancelled \(matches.count == 1 ? "\"\(matches[0].title)\" (\(ToolDates.describe(matches[0].fireDate, calendar: clock.calendar)))" : "\(matches.count) alarms and timers")."
     }
 }
 
@@ -213,6 +279,90 @@ public struct AddCalendarEventTool: Tool {
         guard end > start else { throw ToolError("The end must be after the start.") }
         let event = try await calendar.addEvent(title: args.title, start: start, end: end, location: args.location)
         return "Added \"\(event.title)\" on \(ToolDates.describe(event.start, calendar: clock.calendar))."
+    }
+}
+
+/// Finds the one event the user means: by words from its title, on a day if they named one, otherwise in the next year.
+enum CalendarLookup {
+    static func find(title: String, on day: String?, calendar: any CalendarProviding, clock: ToolClock) async throws -> CalendarEventInfo {
+        let now = clock.now()
+        let cal = clock.calendar
+        var from = cal.startOfDay(for: now)
+        var to = cal.date(byAdding: .day, value: 366, to: from) ?? from.addingTimeInterval(366 * 86_400)
+        if let day, let date = ToolDates.parse(day, now: now, calendar: cal) {
+            from = cal.startOfDay(for: date)
+            to = cal.date(byAdding: .day, value: 1, to: from) ?? from.addingTimeInterval(86_400)
+        }
+        let words = title.folded.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init).filter { $0.count > 1 }
+        let all = try await calendar.events(from: from, to: to).sorted { $0.start < $1.start }
+        let matches = all.filter { event in
+            let name = event.title.folded
+            return words.isEmpty ? false : words.allSatisfy { name.contains($0) }
+        }
+        func line(_ e: CalendarEventInfo) -> String { "\"\(e.title)\" on \(ToolDates.describe(e.start, calendar: cal))" }
+        guard let first = matches.first else {
+            let nearby = all.prefix(6).map(line).joined(separator: "; ")
+            throw ToolError("No calendar event matches \"\(title)\". " + (nearby.isEmpty ? "The calendar is empty for that period." : "Events then: \(nearby)."))
+        }
+        if matches.count > 1 {
+            throw ToolError("\(matches.count) events match \"\(title)\": \(matches.prefix(6).map(line).joined(separator: "; ")). Ask the user which one (or for its date).")
+        }
+        guard !first.id.isEmpty else { throw ToolError("That event cannot be changed from here.") }
+        return first
+    }
+}
+
+public struct RescheduleCalendarEventTool: Tool {
+    public let name = "reschedule_calendar_event"
+    public let description = LocalizedText(
+        en: "Move an existing calendar event to a new time (it keeps its length unless new_end is given). Find it by words from its title and, if known, the day it is on now.",
+        pl: "Przenieś istniejące wydarzenie w kalendarzu na nowy termin (zachowuje długość, chyba że podano new_end). Znajdź je po słowach z tytułu i, jeśli znany, dniu, w którym jest teraz."
+    )
+    public let parametersSchema = #"{"type":"object","properties":{"title":{"type":"string","description":"Words from the event's current title"},"on":{"type":"string","description":"The day it is on now, YYYY-MM-DD (optional)"},"new_start":{"type":"string","description":"ISO 8601 local date-time"},"new_end":{"type":"string"},"new_title":{"type":"string"}},"required":["title","new_start"]}"#
+    public let tier = ToolTier.both
+    public let risk = ToolRisk.writeExternal
+    let calendar: any CalendarProviding
+    let clock: ToolClock
+
+    public init(calendar: any CalendarProviding, clock: ToolClock) { self.calendar = calendar; self.clock = clock }
+
+    struct Args: Decodable { let title: String; let on: String?; let new_start: String; let new_end: String?; let new_title: String? }
+
+    public func run(argumentsJSON: String) async throws -> String {
+        let args = try ToolArguments.decode(Args.self, from: argumentsJSON)
+        let now = clock.now()
+        guard let start = ToolDates.parse(args.new_start, now: now, calendar: clock.calendar) else {
+            throw ToolError("Could not understand the new start time \"\(args.new_start)\".")
+        }
+        let end = args.new_end.flatMap { ToolDates.parse($0, now: now, calendar: clock.calendar) }
+        if let end, end <= start { throw ToolError("The end must be after the start.") }
+        let found = try await CalendarLookup.find(title: args.title, on: args.on, calendar: calendar, clock: clock)
+        let updated = try await calendar.updateEvent(id: found.id, title: args.new_title, start: start, end: end, location: nil)
+        return "Moved \"\(updated.title)\" from \(ToolDates.describe(found.start, calendar: clock.calendar)) to \(ToolDates.describe(updated.start, calendar: clock.calendar)) (until \(ToolDates.describe(updated.end, calendar: clock.calendar).suffix(5)))."
+    }
+}
+
+public struct DeleteCalendarEventTool: Tool {
+    public let name = "delete_calendar_event"
+    public let description = LocalizedText(
+        en: "Delete a calendar event. Find it by words from its title and, if known, the day it is on.",
+        pl: "Usuń wydarzenie z kalendarza. Znajdź je po słowach z tytułu i, jeśli znany, dniu."
+    )
+    public let parametersSchema = #"{"type":"object","properties":{"title":{"type":"string","description":"Words from the event's title"},"on":{"type":"string","description":"The day it is on, YYYY-MM-DD (optional)"}},"required":["title"]}"#
+    public let tier = ToolTier.both
+    public let risk = ToolRisk.destructive
+    let calendar: any CalendarProviding
+    let clock: ToolClock
+
+    public init(calendar: any CalendarProviding, clock: ToolClock) { self.calendar = calendar; self.clock = clock }
+
+    struct Args: Decodable { let title: String; let on: String? }
+
+    public func run(argumentsJSON: String) async throws -> String {
+        let args = try ToolArguments.decode(Args.self, from: argumentsJSON)
+        let found = try await CalendarLookup.find(title: args.title, on: args.on, calendar: calendar, clock: clock)
+        try await calendar.deleteEvent(id: found.id)
+        return "Deleted \"\(found.title)\" (\(ToolDates.describe(found.start, calendar: clock.calendar)))."
     }
 }
 
