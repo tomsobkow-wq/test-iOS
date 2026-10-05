@@ -82,7 +82,7 @@ actor GoogleTokens {
         var form = URLComponents()
         form.queryItems = fields.map { URLQueryItem(name: $0.key, value: $0.value) }
         request.httpBody = Data((form.percentEncodedQuery ?? "").utf8)
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (data, _) = try await URLSession(configuration: .ephemeral).data(for: request)
         return (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
     }
 }

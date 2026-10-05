@@ -46,6 +46,8 @@ public struct GmailClient: EmailProviding {
     private let accessToken: @Sendable () async throws -> String
     private let transport: Transport
     private static let base = "https://gmail.googleapis.com/gmail/v1/users/me/messages"
+    /// Memory only: no cookies and no cache, so email text is never written to this phone's disk by the networking layer.
+    private static let session = URLSession(configuration: .ephemeral)
 
     public init(
         isSignedIn: @escaping @Sendable () async -> Bool,
@@ -57,7 +59,7 @@ public struct GmailClient: EmailProviding {
         self.transport = transport ?? { request in
             var request = request
             request.timeoutInterval = 20
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await Self.session.data(for: request)
             guard let http = response as? HTTPURLResponse else { throw ToolError("Gmail did not answer.") }
             return (data, http)
         }
