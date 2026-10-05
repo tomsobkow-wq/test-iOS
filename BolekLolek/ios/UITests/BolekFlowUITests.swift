@@ -57,4 +57,16 @@ final class BolekFlowUITests: XCTestCase {
         send("What can you do without internet?", waitSeconds: 60)
         shot("08-lolek-reply")
     }
+
+    func testPlusMenuOffersGmailAndExplainsWhenNotSetUp() throws {
+        let plus = app.buttons["Add a document or statement"].firstMatch
+        XCTAssertTrue(plus.waitForExistence(timeout: 10), "plus menu")
+        plus.tap()
+        shot("09-plus-menu")
+        let connect = app.buttons["Connect Gmail"].firstMatch
+        XCTAssertTrue(connect.waitForExistence(timeout: 5), "Connect Gmail entry")
+        connect.tap()
+        Thread.sleep(forTimeInterval: 2)
+        shot("10-after-connect-tap")
+    }
 }

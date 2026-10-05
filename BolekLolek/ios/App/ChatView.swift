@@ -213,11 +213,15 @@ struct Composer: View {
                 Menu {
                     Button { showFiles = true } label: { Label("Files", systemImage: "folder") }
                     PhotosPicker(selection: $photo, matching: .images) { Label("Photos", systemImage: "photo") }
-                    if let mail, mail.canConnect {
+                    if let mail {
                         if mail.isConnected {
                             Button { Task { await mail.disconnect() } } label: { Label("Disconnect Gmail", systemImage: "envelope.badge.shield.half.filled") }
                         } else {
                             Button {
+                                if mail.state == .unavailable {
+                                    viewModel.receive(notice: String(localized: "Gmail sign-in is not set up in this test build yet: it needs a Google client ID from the developer."))
+                                    return
+                                }
                                 Task {
                                     if await mail.connect() {
                                         viewModel.receive(notice: String(localized: "Gmail is connected. I read your email on this iPhone only: nothing from it goes to Bolek or any server. Try “any unread email?”"))

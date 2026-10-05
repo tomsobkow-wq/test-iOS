@@ -410,6 +410,16 @@
           }
         }
       }
+    },
+    "Gmail sign-in is not set up in this test build yet: it needs a Google client ID from the developer.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Logowanie do Gmaila nie jest jeszcze skonfigurowane w tej wersji testowej: potrzebny jest identyfikator klienta Google od dewelopera."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
