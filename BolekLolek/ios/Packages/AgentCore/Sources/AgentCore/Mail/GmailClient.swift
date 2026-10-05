@@ -5,7 +5,7 @@ public enum EmailKind: String, Sendable, Equatable, CaseIterable {
     case person, updates, promotions, social
 }
 
-public struct EmailSummary: Sendable, Equatable {
+public struct EmailSummary: Sendable, Equatable, Identifiable {
     public let id: String
     public let from: String
     public let subject: String

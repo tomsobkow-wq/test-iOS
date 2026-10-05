@@ -96,6 +96,7 @@ public final class FixtureMailbox: EmailProviding, MailboxPaging, @unchecked Sen
         var after: Double?
         var before: Double?
         var unread = false
+        var primaryOnly = false
         var from: String?
         var words: [String] = []
         var rest = query
@@ -106,6 +107,7 @@ public final class FixtureMailbox: EmailProviding, MailboxPaging, @unchecked Sen
         for token in rest.split(separator: " ").map(String.init) {
             if token == "in:inbox" { continue }
             else if token == "is:unread" { unread = true }
+            else if token == "category:primary" { primaryOnly = true }
             else if token.hasPrefix("after:") { after = Double(token.dropFirst(6)) }
             else if token.hasPrefix("before:") { before = Double(token.dropFirst(7)) }
             else { words.append(token.lowercased()) }
@@ -115,6 +117,7 @@ public final class FixtureMailbox: EmailProviding, MailboxPaging, @unchecked Sen
             if let after, date < after { return false }
             if let before, date >= before { return false }
             if unread, !item.unread { return false }
+            if primaryOnly, item.kind != .person { return false }
             if let from, !item.from.lowercased().contains(from) { return false }
             let haystack = (item.subject + " " + item.snippet + " " + item.from).lowercased()
             return words.allSatisfy { haystack.contains($0) }

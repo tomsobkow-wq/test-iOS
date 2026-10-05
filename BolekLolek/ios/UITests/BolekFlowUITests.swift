@@ -18,6 +18,21 @@ final class BolekFlowUITests: XCTestCase {
         add(attachment)
     }
 
+    /// Sends and waits until the answer is finished (not a fixed sleep); returns how long it took.
+    @discardableResult
+    private func ask(_ text: String, timeout: TimeInterval = 150) -> TimeInterval {
+        let field = app.textFields["Message"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "message field")
+        field.tap()
+        field.typeText(text)
+        app.buttons["send-button"].tap()
+        let start = Date()
+        Thread.sleep(forTimeInterval: 1.0)
+        let idle = app.otherElements["chat-idle"]
+        _ = idle.waitForExistence(timeout: timeout)
+        return Date().timeIntervalSince(start)
+    }
+
     private func send(_ text: String, waitSeconds: TimeInterval) {
         let field = app.textFields["Message"]
         XCTAssertTrue(field.waitForExistence(timeout: 10), "message field")
@@ -87,5 +102,88 @@ final class BolekFlowUITests: XCTestCase {
             send(question, waitSeconds: index == 0 ? 90 : 45)
             shot("12-q\(index + 1)")
         }
+    }
+
+    /// Mail screen with a made-up mailbox (BOLEK_DEBUG_MAIL_FIXTURE): no real email is ever shown.
+    func testMailScreenWithFixtureMailbox() throws {
+        app.terminate()
+        app.launchEnvironment["BOLEK_DEBUG_MAIL_FIXTURE"] = "2"
+        app.launch()
+        let button = app.buttons["mail-button"]
+        XCTAssertTrue(button.waitForExistence(timeout: 15), "mail button")
+        Thread.sleep(forTimeInterval: 1.5)
+        shot("20-lolek-with-mail-button")
+        button.tap()
+        Thread.sleep(forTimeInterval: 3)
+        shot("21-mail-today")
+        app.buttons["Unread"].firstMatch.tap()
+        Thread.sleep(forTimeInterval: 2)
+        shot("22-mail-unread")
+        app.buttons["All"].firstMatch.tap()
+        Thread.sleep(forTimeInterval: 2)
+        app.swipeUp()
+        shot("23-mail-all-scrolled")
+        app.buttons["People"].firstMatch.tap()
+        Thread.sleep(forTimeInterval: 2)
+        let row = app.buttons.containing(NSPredicate(format: "label CONTAINS 'Weekend'")).firstMatch
+        if row.waitForExistence(timeout: 5) { row.tap() }
+        Thread.sleep(forTimeInterval: 2)
+        shot("24-mail-detail")
+    }
+
+    /// Lolek's real on-device model answering over the made-up mailbox, and the Summarise button from the Mail screen.
+    func testMailQuestionsWithFixtureMailbox() throws {
+        app.terminate()
+        app.launchEnvironment["BOLEK_DEBUG_MAIL_FIXTURE"] = "1"
+        app.launch()
+        Thread.sleep(forTimeInterval: 3)
+        var timings: [String] = []
+        func step(_ name: String, _ text: String) {
+            let seconds = ask(text)
+            timings.append("\(name) \(Int(seconds))s")
+            shot("\(name) \(Int(seconds))s")
+        }
+        step("30-today", "What emails did I get today?")
+        step("31-unread", "Ile mam nieprzeczytanych maili?")
+        step("32-people", "Which of today's emails are from real people?")
+        step("33-promos", "How many promotion emails today?")
+        app.buttons["mail-button"].tap()
+        Thread.sleep(forTimeInterval: 3)
+        let row = app.buttons.containing(NSPredicate(format: "label CONTAINS 'Weekend'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 8), "Weekend row")
+        row.tap()
+        Thread.sleep(forTimeInterval: 2)
+        app.buttons["mail-summarise"].tap()
+        let start = Date()
+        Thread.sleep(forTimeInterval: 2)
+        _ = app.otherElements["chat-idle"].waitForExistence(timeout: 150)
+        shot("34-summarise \(Int(Date().timeIntervalSince(start)))s")
+        step("35-followup", "Ile ta rezerwacja kosztuje?")
+        let note = XCTAttachment(string: timings.joined(separator: "\n"))
+        note.name = "timings"
+        note.lifetime = .keepAlways
+        add(note)
+    }
+
+    /// Open an email from the Mail screen, summarise it, then ask a money question that must be answered from the email.
+    func testOpenedEmailFollowUpStaysOnTheEmail() throws {
+        app.terminate()
+        app.launchEnvironment["BOLEK_DEBUG_MAIL_FIXTURE"] = "1"
+        app.launch()
+        Thread.sleep(forTimeInterval: 3)
+        app.buttons["mail-button"].tap()
+        Thread.sleep(forTimeInterval: 3)
+        app.buttons["All"].firstMatch.tap()
+        Thread.sleep(forTimeInterval: 2)
+        let row = app.buttons.containing(NSPredicate(format: "label CONTAINS 'Weekend'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 8), "Weekend row")
+        row.tap()
+        Thread.sleep(forTimeInterval: 2)
+        app.buttons["mail-summarise"].tap()
+        Thread.sleep(forTimeInterval: 2)
+        _ = app.otherElements["chat-idle"].waitForExistence(timeout: 200)
+        shot("40-summary")
+        let seconds = ask("Ile ta rezerwacja kosztuje?", timeout: 200)
+        shot("41-followup \(Int(seconds))s")
     }
 }

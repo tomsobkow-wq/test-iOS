@@ -138,27 +138,51 @@ final class MailConnection: NSObject, ASWebAuthenticationPresentationContextProv
     /// The mailboxes Lolek reads from. Only Lolek's registry gets tools built on this.
     nonisolated let provider: MultiEmailProvider
 
+    /// Unread inbox mail across the connected mailboxes (nil until known).
+    private(set) var unread: Int?
+    /// Debug only: BOLEK_DEBUG_MAIL_FIXTURE=1 (or 2) shows made-up mailboxes instead of Gmail, for screenshots.
+    private let fixtureLabels: [String]
+
     override init() {
         let tokens = tokens
+        var fixtures: [String] = []
+        #if DEBUG
+        if let count = ProcessInfo.processInfo.environment["BOLEK_DEBUG_MAIL_FIXTURE"].flatMap(Int.init), count > 0 {
+            fixtures = ["anna@example.com", "praca@example.com"].prefix(min(count, 2)).map { $0 }
+        }
+        #endif
+        fixtureLabels = fixtures
+        let fixtureBoxes = fixtures.enumerated().map { index, label in
+            // The second fixture mailbox is a little older, so the two interleave.
+            FixtureMailbox(label: label, now: Date().addingTimeInterval(-Double(index) * 2400))
+        }
         provider = MultiEmailProvider {
-            await tokens.accounts().map { email in
-                MultiEmailProvider.Account(
-                    label: email,
-                    provider: GmailClient(isSignedIn: { true }, accessToken: { try await tokens.validAccessToken(for: email) })
-                )
+            if !fixtureBoxes.isEmpty {
+                return fixtureBoxes.map { MultiEmailProvider.Account(label: $0.label, provider: $0, paging: $0) }
+            }
+            return await tokens.accounts().map { email in
+                let client = GmailClient(isSignedIn: { true }, accessToken: { try await tokens.validAccessToken(for: email) })
+                return MultiEmailProvider.Account(label: email, provider: client, paging: client)
             }
         }
         super.init()
-        state = GoogleConfig.clientID == nil ? .unavailable : .signedOut
+        state = GoogleConfig.clientID == nil && fixtures.isEmpty ? .unavailable : .signedOut
         Task { await refreshAccounts() }
+    }
+
+    /// Fresh unread count; called when the app comes forward and after connecting.
+    func refreshUnread() async {
+        guard isConnected else { unread = nil; return }
+        unread = await provider.unreadCount()
     }
 
     var isConnected: Bool { !accounts.isEmpty }
     var canConnect: Bool { state != .unavailable }
 
     private func refreshAccounts() async {
-        accounts = await tokens.accounts()
+        accounts = fixtureLabels.isEmpty ? await tokens.accounts() : fixtureLabels
         if state != .unavailable { state = accounts.isEmpty ? .signedOut : .signedIn }
+        await refreshUnread()
     }
 
     /// Signs in one more mailbox and returns its address (nil if cancelled or refused).

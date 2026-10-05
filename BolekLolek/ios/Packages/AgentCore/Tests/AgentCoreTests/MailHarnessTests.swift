@@ -101,6 +101,16 @@ final class EmailPlannerTests: XCTestCase {
         XCTAssertEqual(args(polish)["unread"] as? Bool, true)
     }
 
+    func testKindsOfSenderAreNotTreatedAsNames() async throws {
+        for text in ["Which of today's emails are from real people?", "Które dzisiejsze maile są od ludzi?", "emails from people today"] {
+            let planned = await plan(text)
+            let call = try XCTUnwrap(planned.first, text)
+            XCTAssertNil(args(call)["from"], text)
+            XCTAssertEqual(args(call)["when"] as? String, "today", text)
+            XCTAssertEqual(args(call)["only"] as? String, "people", text)
+        }
+    }
+
     func testCountingQuestionPlansASearch() async {
         let calls = await plan("Ile maili mam w skrzynce?")
         XCTAssertEqual(calls.first?.name, "search_email")
@@ -129,6 +139,46 @@ final class EmailPlannerTests: XCTestCase {
         XCTAssertTrue(first.first?.argumentsJSON.contains("0zabc12") == true)
         let second = await planner.plan(userText: "And who is it from?", language: .en)
         XCTAssertTrue(second.isEmpty)
+    }
+}
+
+private struct AlwaysPlans: TurnPlanner {
+    func plan(userText: String, language: ConversationLanguage) async -> [ToolCall] { [ToolCall(name: "statement_query", argumentsJSON: "{}")] }
+}
+
+final class QuietWhileEmailIsOpenTests: XCTestCase {
+    func testStatementPlannerStaysQuietForThreeFollowUpsThenWakes() async {
+        let focus = EmailFocus()
+        let email = EmailPlanner(focus: focus, isConnected: { true })
+        let quiet = QuietWhileEmailIsOpen(AlwaysPlans(), focus: focus)
+        await focus.set(id: "0zabc")
+        _ = await email.plan(userText: "Summarise this email.", language: .en)
+        for question in ["Ile ta rezerwacja kosztuje?", "A kiedy płatne?", "Kto to wysłał?"] {
+            _ = await email.plan(userText: question, language: .pl)
+            let calls = await quiet.plan(userText: question, language: .pl)
+            XCTAssertTrue(calls.isEmpty, question)
+        }
+        _ = await email.plan(userText: "Ile wydałem na paliwo?", language: .pl)
+        let later = await quiet.plan(userText: "Ile wydałem na paliwo?", language: .pl)
+        XCTAssertEqual(later.count, 1)
+    }
+
+    func testWordsThatNameAStatementStillReachIt() async {
+        let focus = EmailFocus()
+        let email = EmailPlanner(focus: focus, isConnected: { true })
+        let quiet = QuietWhileEmailIsOpen(AlwaysPlans(), focus: focus)
+        await focus.set(id: "0zabc")
+        _ = await email.plan(userText: "Summarise", language: .en)
+        _ = await email.plan(userText: "Ile mam na koncie z wyciągu?", language: .pl)
+        let calls = await quiet.plan(userText: "Ile mam na koncie z wyciągu?", language: .pl)
+        XCTAssertEqual(calls.count, 1)
+    }
+
+    func testNothingIsQuietWithoutAnOpenedEmail() async {
+        let focus = EmailFocus()
+        let quiet = QuietWhileEmailIsOpen(AlwaysPlans(), focus: focus)
+        let calls = await quiet.plan(userText: "Ile wydałem w Biedronce?", language: .pl)
+        XCTAssertEqual(calls.count, 1)
     }
 }
 
@@ -208,6 +258,17 @@ final class SearchEmailHarnessTests: XCTestCase {
         XCTAssertFalse(result.contains("482913"), "verification code must not reach the model")
         XCTAssertTrue(result.contains("Your verification code"), "the subject is listed, the code itself is not")
         XCTAssertTrue(result.contains("Searched: today"))
+    }
+
+    func testOnlyPeopleListsJustThatGroupAndStillCountsTheRest() async throws {
+        let box = FixtureMailbox()
+        let tool = SearchEmailTool(provider: MultiEmailProvider { [.init(label: "demo@example.com", provider: box, paging: box)] })
+        let result = try await tool.run(argumentsJSON: #"{"when":"today","only":"people"}"#)
+        XCTAssertTrue(result.contains("PEOPLE: 3"), result)
+        XCTAssertFalse(result.contains("PROMOTIONS:") || result.contains("UPDATES AND NOTICES:"), result)
+        XCTAssertTrue(result.contains("Not listed because the user asked only about one group"), result)
+        XCTAssertTrue(result.contains("5 promotions"), result)
+        XCTAssertLessThan(result.count, 1800, "small evidence keeps the small model fast")
     }
 
     func testUnreadFilterCountsOnlyUnread() async throws {

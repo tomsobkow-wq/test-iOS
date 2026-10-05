@@ -15,7 +15,20 @@ final class AppModel {
     let handoff = HandoffCenter()
     /// Gmail lives with Lolek only: on this phone, never reaching Bolek or our servers.
     let mail = MailConnection()
+    let emailFocus = EmailFocus()
+    var showMail = false
+    @ObservationIgnored lazy var mailModel = MailModel(connection: mail)
+    #if DEBUG
+    /// Debug only: numbers about each model call (token counts and timings, never text) go to Documents/stats.jsonl.
+    private let lolekProvider = LlamaCppProvider(statsHandler: { stats in
+        guard let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        let line = "{\"t\":\(Date().timeIntervalSince1970),\"prompt\":\(stats.promptTokens),\"reused\":\(stats.reusedTokens),\"checkpoint\":\(stats.checkpointTokens),\"generated\":\(stats.generatedTokens),\"prefill_s\":\(String(format: "%.1f", stats.prefillSeconds)),\"gen_s\":\(String(format: "%.1f", stats.generationSeconds)),\"tps\":\(String(format: "%.1f", stats.tokensPerSecond))}\n"
+        let url = folder.appendingPathComponent("stats.jsonl")
+        if let handle = try? FileHandle(forWritingTo: url) { handle.seekToEndOfFile(); handle.write(Data(line.utf8)); try? handle.close() } else { try? Data(line.utf8).write(to: url) }
+    })
+    #else
     private let lolekProvider = LlamaCppProvider()
+    #endif
     private var connecting = false
 
     init() {
@@ -32,8 +45,13 @@ final class AppModel {
                 },
                 modelReady: { [setup = lolekSetup] in setup.isReady }
             ),
-            planner: CompositeTurnPlanner([WebIntentPlanner(), DocumentPlanner(store: AppServices.documents)]),
+            planner: CompositeTurnPlanner([
+                EmailPlanner(focus: emailFocus, isConnected: { [mail] in await mail.provider.isConnected() }),
+                WebIntentPlanner(),
+                QuietWhileEmailIsOpen(DocumentPlanner(store: AppServices.documents), focus: emailFocus),
+            ]),
             fixedPromptLanguage: .en,
+            shortenOldResultsOf: ["search_email"],
             willSend: { [handoff] text in handoff.begin(userText: text) }
         )
         bolek = ChatViewModel(
@@ -70,6 +88,29 @@ final class AppModel {
         switch mode {
         case .lolek: lolek
         case .bolek: bolek
+        }
+    }
+
+    /// From the Mail screen: Lolek reads that email and answers `prompt` about it.
+    func discussEmail(_ email: EmailSummary, prompt: String) {
+        Task {
+            showMail = false
+            mode = .lolek
+            // Lolek may still be answering the last question; wait for it rather than drop the tap.
+            var waited = 0
+            while lolek.isWorking, waited < 240 { try? await Task.sleep(nanoseconds: 500_000_000); waited += 1 }
+            await emailFocus.set(id: email.id)
+            lolek.sendText(prompt)
+        }
+    }
+
+    /// From the Mail screen: back to the chat with the email attached to the next question.
+    func askAboutEmail(_ email: EmailSummary) {
+        Task {
+            await emailFocus.set(id: email.id)
+            showMail = false
+            mode = .lolek
+            lolek.draft = String(localized: "About this email: ")
         }
     }
 

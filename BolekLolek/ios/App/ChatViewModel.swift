@@ -31,7 +31,7 @@ final class ChatViewModel {
 
     init(
         mode: AgentMode, provider: any ModelProvider, registry: ToolRegistry, documents: DocumentSupport? = nil,
-        planner: (any TurnPlanner)? = nil, fixedPromptLanguage: ConversationLanguage? = nil,
+        planner: (any TurnPlanner)? = nil, fixedPromptLanguage: ConversationLanguage? = nil, shortenOldResultsOf: Set<String> = [],
         isOnline: (@MainActor () -> Bool)? = nil, willSend: (@MainActor (String) -> Void)? = nil
     ) {
         self.documents = documents
@@ -48,6 +48,7 @@ final class ChatViewModel {
             // With documents: pick the obvious query tool ourselves and check every figure the model writes.
             verifier: documents.map { _ in GroundingVerifier() },
             planner: planner,
+            shortenOldResultsOf: shortenOldResultsOf,
             fixedPromptLanguage: fixedPromptLanguage
         )
     }

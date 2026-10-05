@@ -46,15 +46,23 @@ struct RootView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ModeHeader(selection: $model.mode, isOnline: model.network.isOnline)
+            ModeHeader(selection: $model.mode, isOnline: model.network.isOnline, mail: model.mode == .lolek && model.mail.canConnect ? model.mail : nil, onMail: { model.showMail = true })
             Divider()
             ChatView(viewModel: model.current, setup: model.mode == .lolek ? model.lolekSetup : nil, handoff: model.handoff, mail: model.mode == .lolek ? model.mail : nil, onAskBolek: { model.askBolek($0) })
                 .id(model.mode)
         }
         .tint(model.mode.accent)
         .animation(.easeInOut(duration: 0.25), value: model.mode)
+        .sheet(isPresented: $model.showMail) {
+            MailScreen(
+                model: model.mailModel,
+                onClose: { model.showMail = false },
+                onSummarise: { model.discussEmail($0, prompt: String(localized: "Summarise this email.")) },
+                onAsk: { model.askAboutEmail($0) }
+            )
+        }
         .onChange(of: scenePhase, initial: true) { _, phase in
-            if phase == .active { model.connectBackend() }
+            if phase == .active { model.connectBackend(); Task { await model.mail.refreshUnread() } }
         }
     }
 }
@@ -63,10 +71,14 @@ struct RootView: View {
 struct ModeHeader: View {
     @Binding var selection: AgentMode
     var isOnline = true
+    /// Lolek only: the envelope button that opens the Mail screen.
+    var mail: MailConnection?
+    var onMail: () -> Void = {}
     @Namespace private var thumb
 
     var body: some View {
         VStack(spacing: 10) {
+            HStack(spacing: 10) {
             HStack(spacing: 0) {
                 ForEach(AgentMode.allCases) { mode in
                     let isSelected = selection == mode
@@ -92,6 +104,32 @@ struct ModeHeader: View {
             }
             .padding(3)
             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+            if let mail {
+                Button(action: onMail) {
+                    Image(systemName: "envelope")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(selection.accent)
+                        .frame(width: 46, height: 46)
+                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(alignment: .topTrailing) {
+                            if let unread = mail.unread, unread > 0 {
+                                Text(verbatim: unread > 99 ? "99+" : String(unread))
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 5)
+                                    .frame(minWidth: 18, minHeight: 18)
+                                    .background(selection.accent, in: Capsule())
+                                    .overlay(Capsule().strokeBorder(Color(.systemBackground), lineWidth: 2))
+                                    .offset(x: 6, y: -6)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("Mail"))
+                .accessibilityIdentifier("mail-button")
+                .transition(.scale.combined(with: .opacity))
+            }
+            }
 
             HStack(spacing: 6) {
                 if !isOnline, selection == .lolek {

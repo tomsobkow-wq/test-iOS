@@ -73,6 +73,10 @@ struct ChatView: View {
             }
 
             Composer(viewModel: viewModel, mail: mail)
+                .overlay(alignment: .topLeading) {
+                    // Invisible marker so UI tests can tell when an answer has finished.
+                    if !viewModel.isWorking { Color.clear.frame(width: 1, height: 1).accessibilityIdentifier("chat-idle") }
+                }
         }
     }
 

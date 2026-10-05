@@ -30,7 +30,7 @@ public struct SearchEmailTool: Tool, ConditionallyAvailable {
         en: "Find emails in the user's connected Gmail accounts, newest first. Use for any question about what mail arrived: counts, unread, from a person or company, a time period. Reads every match across all pages and returns the true count grouped by people, updates and promotions. Set when to today, yesterday, this_week, last_7_days or last_30_days; unread=true for unread only; from for a sender; text for words to look for. Returns ids for read_email.",
         pl: "Znajdź maile w połączonych kontach Gmail, od najnowszych. Używaj przy każdym pytaniu o to, jaka poczta przyszła: liczby, nieprzeczytane, od osoby lub firmy, okres. Czyta wszystkie pasujące wiadomości ze wszystkich stron i zwraca prawdziwą liczbę pogrupowaną na osoby, powiadomienia i promocje. Ustaw when na today, yesterday, this_week, last_7_days lub last_30_days; unread=true tylko dla nieprzeczytanych; from dla nadawcy; text dla szukanych słów. Zwraca identyfikatory dla read_email."
     )
-    public let parametersSchema = #"{"type":"object","properties":{"when":{"type":"string","enum":["any","today","yesterday","this_week","last_7_days","last_30_days"]},"unread":{"type":"boolean"},"from":{"type":"string","description":"Sender name or address"},"text":{"type":"string","description":"Words to look for"},"query":{"type":"string","description":"Advanced Gmail search syntax, rarely needed"},"account":{"type":"string","description":"Only this mailbox, if the user names one"}}}"#
+    public let parametersSchema = #"{"type":"object","properties":{"when":{"type":"string","enum":["any","today","yesterday","this_week","last_7_days","last_30_days"]},"unread":{"type":"boolean"},"from":{"type":"string","description":"Sender name or address"},"text":{"type":"string","description":"Words to look for"},"query":{"type":"string","description":"Advanced Gmail search syntax, rarely needed"},"account":{"type":"string","description":"Only this mailbox, if the user names one"},"only":{"type":"string","enum":["people","updates","promotions","social"],"description":"List just this group, when the user asks about it"}}}"#
     public let tier = ToolTier.lolek
     public let risk = ToolRisk.read
     let provider: any EmailProviding
@@ -43,6 +43,7 @@ public struct SearchEmailTool: Tool, ConditionallyAvailable {
         let text: String?
         let query: String?
         let account: String?
+        let only: String?
     }
 
     public init(provider: any EmailProviding, clock: ToolClock = ToolClock()) {
@@ -53,7 +54,7 @@ public struct SearchEmailTool: Tool, ConditionallyAvailable {
     public func isAvailable() async -> Bool { await provider.isConnected() }
 
     public func run(argumentsJSON: String) async throws -> String {
-        let args = (try? ToolArguments.decode(Args.self, from: argumentsJSON)) ?? Args(when: nil, unread: nil, from: nil, text: nil, query: nil, account: nil)
+        let args = (try? ToolArguments.decode(Args.self, from: argumentsJSON)) ?? Args(when: nil, unread: nil, from: nil, text: nil, query: nil, account: nil, only: nil)
         let spec = EmailQuerySpec(
             when: args.when.flatMap { EmailWhen(rawValue: $0) } ?? .any, unread: args.unread?.value ?? false,
             from: args.from, text: args.text, raw: args.query, account: args.account
@@ -68,7 +69,14 @@ public struct SearchEmailTool: Tool, ConditionallyAvailable {
             let found = try await provider.search(query: query, limit: 10)
             collected = EmailDigest.Collected(items: found, complete: found.count < 10, failedAccounts: [], estimatedTotal: found.count)
         }
-        return EmailDigest.render(collected, searched: builder.describe(spec), accounts: accounts, clock: clock)
+        let only: EmailKind? = switch args.only {
+        case "people": .person
+        case "updates": .updates
+        case "promotions": .promotions
+        case "social": .social
+        default: nil
+        }
+        return EmailDigest.render(collected, searched: builder.describe(spec), accounts: accounts, only: only, clock: clock)
     }
 }
 

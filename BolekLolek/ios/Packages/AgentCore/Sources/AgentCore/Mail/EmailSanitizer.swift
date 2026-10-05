@@ -13,6 +13,22 @@ public enum EmailSanitizer {
         return out
     }
 
+    /// For the Mail screen, where the owner reads their own mail: codes stay (they may want them), but links are shown as
+    /// their site name so a long tracking address never clutters the page or looks tappable.
+    public static func display(_ text: String) -> String {
+        guard let regex = try? NSRegularExpression(pattern: "https?://[^\\s<>\"')\\]]+") else { return text }
+        let ns = text as NSString
+        var out = ""
+        var last = 0
+        for match in regex.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+            out += ns.substring(with: NSRange(location: last, length: match.range.location - last))
+            let host = URL(string: ns.substring(with: match.range))?.host?.replacingOccurrences(of: "www.", with: "")
+            out += host.map { "↗ \($0)" } ?? "↗ link"
+            last = match.range.location + match.range.length
+        }
+        return out + ns.substring(from: last)
+    }
+
     private static func hideCodes(in text: String) -> String {
         let keyword = "(?:(?<!zip\\s)(?<!postal\\s)code|kod(?!\\s+(?:pocztow\\w*|postal))|otp|passcode|pin|verification|verify|weryfikac\\w*|jednorazow\\w*|one[- ]time|security code|hasło)"
         // "code is 482913", "kod: 4829-13", "Your verification code: 123 456"

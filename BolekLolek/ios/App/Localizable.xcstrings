@@ -430,6 +430,316 @@
           }
         }
       }
+    },
+    "Mail": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poczta"
+          }
+        }
+      }
+    },
+    "Today": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dzisiaj"
+          }
+        }
+      }
+    },
+    "Yesterday": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wczoraj"
+          }
+        }
+      }
+    },
+    "Unread": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieprzeczytane"
+          }
+        }
+      }
+    },
+    "People": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Osoby"
+          }
+        }
+      }
+    },
+    "All": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie"
+          }
+        }
+      }
+    },
+    "Search mail": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szukaj w poczcie"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gotowe"
+          }
+        }
+      }
+    },
+    "Clear search": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyczyść wyszukiwanie"
+          }
+        }
+      }
+    },
+    "On this iPhone only": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tylko na tym iPhonie"
+          }
+        }
+      }
+    },
+    "All accounts": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie konta"
+          }
+        }
+      }
+    },
+    "%lld unread": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld nieprzeczytanych"
+          }
+        }
+      }
+    },
+    "%lld accounts": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld konta"
+          }
+        }
+      }
+    },
+    "Reading your mail…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czytam pocztę…"
+          }
+        }
+      }
+    },
+    "Could not read mail": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się odczytać poczty"
+          }
+        }
+      }
+    },
+    "No mailbox is connected.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Żadna skrzynka nie jest połączona."
+          }
+        }
+      }
+    },
+    "Nothing here": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pusto"
+          }
+        }
+      }
+    },
+    "No mail matches your search.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak maili pasujących do wyszukiwania."
+          }
+        }
+      }
+    },
+    "No mail has arrived today.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dzisiaj nie przyszła żadna poczta."
+          }
+        }
+      }
+    },
+    "You are all caught up.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystko przeczytane."
+          }
+        }
+      }
+    },
+    "No mail from people.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak maili od osób."
+          }
+        }
+      }
+    },
+    "The inbox is empty.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skrzynka jest pusta."
+          }
+        }
+      }
+    },
+    "That's everything.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To wszystko."
+          }
+        }
+      }
+    },
+    "Could not reach %@.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się połączyć z %@."
+          }
+        }
+      }
+    },
+    "Opening…": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwieram…"
+          }
+        }
+      }
+    },
+    "Summarise": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Streść"
+          }
+        }
+      }
+    },
+    "Ask Lolek": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zapytaj Lolka"
+          }
+        }
+      }
+    },
+    "Reply": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odpowiedz"
+          }
+        }
+      }
+    },
+    "Summarise this email.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Streść ten mail."
+          }
+        }
+      }
+    },
+    "About this email: ": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O tym mailu: "
+          }
+        }
+      }
+    },
+    "Lolek reads your mail on this iPhone only. Nothing goes to Bolek or any server.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lolek czyta Twoją pocztę tylko na tym iPhonie. Nic nie trafia do Bolka ani na żaden serwer."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

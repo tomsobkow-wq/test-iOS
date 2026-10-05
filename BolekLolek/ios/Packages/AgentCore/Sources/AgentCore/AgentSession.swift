@@ -30,6 +30,7 @@ public actor AgentSession {
     private let policy = ApprovalPolicy()
     private let verifier: (any AnswerVerifier)?
     private let planner: (any TurnPlanner)?
+    private let shortenOldResultsOf: Set<String>
     /// When set, the system prompt and tool descriptions are always in this language, whatever the user writes in. On-device
     /// models cache that part of the prompt, and a prompt that changes with the language would be re-read on every switch.
     private let fixedPromptLanguage: ConversationLanguage?
@@ -42,11 +43,13 @@ public actor AgentSession {
         language: ConversationLanguage = .fromLocale(),
         verifier: (any AnswerVerifier)? = nil,
         planner: (any TurnPlanner)? = nil,
+        shortenOldResultsOf: Set<String> = [],
         fixedPromptLanguage: ConversationLanguage? = nil
     ) {
         self.fixedPromptLanguage = fixedPromptLanguage
         self.verifier = verifier
         self.planner = planner
+        self.shortenOldResultsOf = shortenOldResultsOf
         self.mode = mode
         self.provider = provider
         self.registry = registry
@@ -57,6 +60,22 @@ public actor AgentSession {
     /// Adds a message that did not come from the model (a document the user attached, its summary), so the
     /// conversation and the model's context stay in step with what is on screen.
     /// Adds tools that were not known at start (the server's, once the app has reached it).
+    /// A small on-device model re-reads the whole conversation every turn, and a long list from an earlier question costs
+    /// seconds each time. Once a turn is answered, the lists named in `shortenOldResultsOf` shrink to one line; the
+    /// answers stay, and so does anything else (an opened email, a statement) that a follow-up may need.
+    private func shortenOldResults() {
+        guard !shortenOldResultsOf.isEmpty else { return }
+        var names: [String: String] = [:]
+        for message in transcript { for call in message.toolCalls { names[call.id] = call.name } }
+        for index in transcript.indices where transcript[index].role == .tool {
+            let message = transcript[index]
+            guard let id = message.toolCallID, let name = names[id], shortenOldResultsOf.contains(name),
+                  message.text.count > 200 else { continue }
+            transcript[index] = ChatMessage(role: .tool, text: "(Results of an earlier \(name) were removed to keep things fast. Search again if they are needed.)",
+                                            toolCallID: id, isError: message.isError)
+        }
+    }
+
     public func register(_ tools: [any Tool]) {
         registry = registry.adding(tools)
     }
@@ -80,6 +99,7 @@ public actor AgentSession {
     /// Runs one user turn to completion. Returns the messages added in this turn.
     @discardableResult
     public func send(_ text: String, onText: (@Sendable (String) -> Void)? = nil) async throws -> [ChatMessage] {
+        shortenOldResults()
         let start = transcript.count
         language = ConversationLanguage.detect(text, fallback: language)
         transcript.append(ChatMessage(role: .user, text: text))
