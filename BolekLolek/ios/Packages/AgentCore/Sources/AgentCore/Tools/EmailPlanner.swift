@@ -5,7 +5,11 @@ public actor EmailFocus {
     private var pending: String?
     /// Turns left in which follow-up questions are about the opened email, not about other documents.
     private var activeTurns = 0
+    /// The email being discussed, kept so "add to calendar" can use its appointment without reading it again.
+    private var opened: EmailMessage?
     public init() {}
+    func remember(_ message: EmailMessage) { opened = message }
+    var openedMessage: EmailMessage? { opened }
     public func set(id: String) { pending = id }
     func take() -> String? {
         defer { pending = nil }
@@ -42,10 +46,14 @@ public struct QuietWhileEmailIsOpen: TurnPlanner {
 /// into a search either did not search or searched wrongly; code does not. The model still writes the answer.
 public struct EmailPlanner: TurnPlanner {
     private let focus: EmailFocus
+    private let provider: (any EmailProviding)?
+    private let clock: ToolClock
     private let isConnected: @Sendable () async -> Bool
 
-    public init(focus: EmailFocus, isConnected: @escaping @Sendable () async -> Bool) {
+    public init(focus: EmailFocus, provider: (any EmailProviding)? = nil, clock: ToolClock = ToolClock(), isConnected: @escaping @Sendable () async -> Bool) {
         self.focus = focus
+        self.provider = provider
+        self.clock = clock
         self.isConnected = isConnected
     }
 
@@ -56,9 +64,11 @@ public struct EmailPlanner: TurnPlanner {
         guard await isConnected() else { return [] }
         await focus.tick()
         if let id = await focus.take() {
+            if let provider, let message = try? await provider.message(id: id) { await focus.remember(message) }
             return [ToolCall(id: "planned-read", name: "read_email", argumentsJSON: ToolArguments.encode(["id": id]))]
         }
         let folded = " " + userText.folded + " "
+        if let call = await calendarCall(for: folded) { return [call] }
         let tokens = folded.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
         func has(_ prefixes: [String]) -> Bool { prefixes.contains { p in tokens.contains { $0.hasPrefix(p) } } }
 
@@ -89,6 +99,25 @@ public struct EmailPlanner: TurnPlanner {
         // Only act when there is something concrete to look up; otherwise the model decides with the tools it has.
         guard !args.isEmpty || counting else { return [] }
         return [ToolCall(id: "planned-search", name: "search_email", argumentsJSON: Self.json(args))]
+    }
+
+    /// "Add it to my calendar" while an email is open: propose its single appointment (the user approves it as usual).
+    /// With several appointments the model asks which one, using the list read_email already gave it.
+    private func calendarCall(for folded: String) async -> ToolCall? {
+        guard await focus.isActive, let message = await focus.openedMessage else { return nil }
+        let wantsAdd = ["dodaj", "zapisz", "wpisz", "dopisz", "add", "put", "schedule", "save"].contains { folded.contains($0) }
+        let mentionsCalendar = ["kalendarz", "calendar", "agend"].contains { folded.contains($0) }
+        guard wantsAdd, mentionsCalendar else { return nil }
+        let found = message.appointments(now: clock.now(), calendar: clock.calendar).filter { !$0.isCancelled }
+        guard found.count == 1, let item = found.first else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = clock.calendar
+        formatter.timeZone = clock.calendar.timeZone
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
+        var args: [String: Any] = ["title": item.title, "start": formatter.string(from: item.start), "end": formatter.string(from: item.effectiveEnd)]
+        if let location = item.location { args["location"] = location }
+        return ToolCall(id: "planned-calendar", name: "add_calendar_event", argumentsJSON: Self.json(args))
     }
 
     private static func json(_ object: [String: Any]) -> String {

@@ -148,6 +148,7 @@ struct MailScreen: View {
         case .today: return String(localized: "No mail has arrived today.")
         case .unread: return String(localized: "You are all caught up.")
         case .people: return String(localized: "No mail from people.")
+        case .events: return String(localized: "No invitations or appointments found.")
         case .all: return String(localized: "The inbox is empty.")
         }
     }
@@ -180,7 +181,7 @@ struct MailScreen: View {
                 ForEach(sections, id: \.title) { section in
                     Section {
                         ForEach(section.items) { item in
-                            Button { searchFocused = false; selected = item } label: { MailRow(item: item) }
+                            Button { searchFocused = false; selected = item } label: { MailRow(item: item, hasAppointment: model.calendarHints.contains(item.id)) }
                                 .buttonStyle(RowPressStyle())
                                 .onAppear { model.loadMoreIfNeeded(current: item) }
                         }
@@ -227,6 +228,7 @@ private struct RowPressStyle: ButtonStyle {
 
 struct MailRow: View {
     let item: EmailSummary
+    var hasAppointment = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -244,6 +246,7 @@ struct MailRow: View {
                         .font(.system(size: 16, weight: item.isUnread ? .semibold : .regular))
                         .lineLimit(1)
                     Spacer(minLength: 8)
+                    if hasAppointment { Image(systemName: "calendar").font(.system(size: 12, weight: .medium)).foregroundStyle(mailAccent) }
                     Text(verbatim: MailDates.time(item.date)).font(.system(size: 13)).foregroundStyle(.secondary)
                 }
                 Text(verbatim: item.subject)

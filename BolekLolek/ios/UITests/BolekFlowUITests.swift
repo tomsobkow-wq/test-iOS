@@ -190,6 +190,7 @@ final class BolekFlowUITests: XCTestCase {
     // MARK: Phone functions (never calls anyone, never taps Send)
 
     private let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+    private var approvalShotTaken = false
 
     /// Taps the system permission prompts we expect (location, notifications, calendar, contacts). Never anything about calls.
     /// Contacts get the least access: "Select Contacts" with nothing selected.
@@ -227,6 +228,10 @@ final class BolekFlowUITests: XCTestCase {
                     app.buttons["Not now"].tap()
                     XCTFail("a call approval appeared; refused")
                 } else {
+                    if !approvalShotTaken {
+                        approvalShotTaken = true
+                        shot("approval-prompt")
+                    }
                     app.buttons["Allow"].tap()
                 }
             }
@@ -346,5 +351,86 @@ final class BolekFlowUITests: XCTestCase {
         app.launchEnvironment["BOLEK_DEBUG_DUMP_NOTIFICATIONS"] = "1"
         app.launch()
         Thread.sleep(forTimeInterval: 5)
+    }
+
+    /// Events tab, the calendar card on an appointment email and the add sheet (cancelled: nothing is saved).
+    func testAppointmentCardOnFixtureEmail() throws {
+        app.terminate()
+        app.launchEnvironment["BOLEK_DEBUG_MAIL_FIXTURE"] = "1"
+        app.launch()
+        let button = app.buttons["mail-button"]
+        XCTAssertTrue(button.waitForExistence(timeout: 15), "mail button")
+        button.tap()
+        Thread.sleep(forTimeInterval: 3)
+        app.buttons["All"].firstMatch.tap()
+        Thread.sleep(forTimeInterval: 2)
+        shot("70-all-with-calendar-marks")
+        app.buttons["Events"].firstMatch.tap()
+        Thread.sleep(forTimeInterval: 2)
+        shot("71-events-tab")
+        let row = app.buttons.containing(NSPredicate(format: "label CONTAINS 'wizyta'")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 8), "appointment row")
+        row.tap()
+        Thread.sleep(forTimeInterval: 3)
+        shot("72-detail-with-card")
+        let add = app.buttons["appointment-add"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 5), "Add button on the card")
+        add.tap()
+        Thread.sleep(forTimeInterval: 2)
+        shot("73-add-sheet")
+        app.buttons["Cancel"].firstMatch.tap()
+    }
+
+    /// On the phone: save an appointment from the card, then add a calendar invite through the chat (with approval). Test events are cleaned up.
+    func testCalendarFlowFromEmail() throws {
+        app.terminate()
+        app.launchEnvironment["BOLEK_DEBUG_MAIL_FIXTURE"] = "1"
+        app.launchEnvironment["BOLEK_DEBUG_CLEAN_TEST_EVENTS"] = "1"
+        app.launch()
+        let button = app.buttons["mail-button"]
+        XCTAssertTrue(button.waitForExistence(timeout: 15), "mail button")
+        Thread.sleep(forTimeInterval: 3)
+        answerSystemPrompts()
+
+        // 1) Card: clinic email, tap Add, save.
+        button.tap()
+        Thread.sleep(forTimeInterval: 3)
+        app.buttons["Events"].firstMatch.tap()
+        Thread.sleep(forTimeInterval: 2)
+        let clinic = app.buttons.containing(NSPredicate(format: "label CONTAINS 'wizyta'")).firstMatch
+        XCTAssertTrue(clinic.waitForExistence(timeout: 8), "clinic row")
+        clinic.tap()
+        Thread.sleep(forTimeInterval: 3)
+        app.buttons["appointment-add"].firstMatch.tap()
+        Thread.sleep(forTimeInterval: 2)
+        app.buttons["appointment-save"].firstMatch.tap()
+        for _ in 0..<20 {
+            answerSystemPrompts()
+            if app.buttons["appointment-added"].exists { break }
+            Thread.sleep(forTimeInterval: 1)
+        }
+        shot("80-card-added")
+        XCTAssertTrue(app.buttons["appointment-added"].exists, "card shows Added")
+        // Close the email, then open the invite and use the chat.
+        app.swipeDown(velocity: .fast)
+        Thread.sleep(forTimeInterval: 2)
+        let invite = app.buttons.containing(NSPredicate(format: "label CONTAINS 'Invitation'")).firstMatch
+        XCTAssertTrue(invite.waitForExistence(timeout: 8), "invite row")
+        invite.tap()
+        Thread.sleep(forTimeInterval: 3)
+        shot("81-invite-card")
+        app.buttons["mail-summarise"].tap()
+        Thread.sleep(forTimeInterval: 5)
+        _ = app.otherElements["chat-idle"].waitForExistence(timeout: 200)
+        Thread.sleep(forTimeInterval: 2)
+        var seconds = askHandlingPrompts("Dodaj to do kalendarza", approve: true, timeout: 200)
+        shot("82-chat-add \(Int(seconds))s")
+        seconds = askHandlingPrompts("What is on my calendar on 2027-01-20?")
+        shot("83-calendar-read \(Int(seconds))s")
+        // Clean up the test events.
+        app.terminate()
+        app.launchEnvironment["BOLEK_DEBUG_CLEAN_TEST_EVENTS"] = "1"
+        app.launch()
+        Thread.sleep(forTimeInterval: 6)
     }
 }

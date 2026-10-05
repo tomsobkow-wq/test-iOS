@@ -46,7 +46,7 @@ final class AppModel {
                 modelReady: { [setup = lolekSetup] in setup.isReady }
             ),
             planner: CompositeTurnPlanner([
-                EmailPlanner(focus: emailFocus, isConnected: { [mail] in await mail.provider.isConnected() }),
+                EmailPlanner(focus: emailFocus, provider: mail.provider, isConnected: { [mail] in await mail.provider.isConnected() }),
                 WebIntentPlanner(),
                 QuietWhileEmailIsOpen(DocumentPlanner(store: AppServices.documents), focus: emailFocus),
             ]),

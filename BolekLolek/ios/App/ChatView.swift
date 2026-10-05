@@ -194,6 +194,12 @@ extension ApprovalText {
             let dates = text("return_date").map { "\(depart) → \($0)" } ?? depart
             let currency = text("currency") ?? "PLN"
             return String(localized: "Watch flight prices from \(origin) to \(destination) (\(dates)) and alert me at \(limit) \(currency) or below?")
+        case "add_calendar_event":
+            guard let title = text("title"), let startText = text("start"), let start = ToolDates.parse(startText) else { return nil }
+            let end = text("end").flatMap { ToolDates.parse($0) } ?? start.addingTimeInterval(3_600)
+            var when = AppointmentFormat.when(start: start, end: end)
+            if let place = text("location"), !place.isEmpty { when += " · " + place }
+            return String(localized: "Add “\(title)” to your calendar: \(when)?")
         case "stop_flight_watch":
             guard let id = text("id") else { return nil }
             return String(localized: "Stop watching flight \(id)?")

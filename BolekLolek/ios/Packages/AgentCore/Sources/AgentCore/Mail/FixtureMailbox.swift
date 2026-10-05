@@ -12,6 +12,7 @@ public final class FixtureMailbox: EmailProviding, MailboxPaging, @unchecked Sen
         let body: String
         let kind: EmailKind
         let unread: Bool
+        var invite: String? = nil
     }
 
     private let now: Date
@@ -27,9 +28,16 @@ public final class FixtureMailbox: EmailProviding, MailboxPaging, @unchecked Sen
         func today(_ minutes: Int) -> Int { min(max(sinceMidnight - minutes, 1), max(sinceMidnight - 1, 1)) }
         func day(_ ago: Int, _ minutes: Int) -> Int { sinceMidnight + (ago - 1) * 1440 + minutes }
         var list: [Item] = []
-        func add(_ id: String, _ minutes: Int, _ from: String, _ subject: String, _ snippet: String, _ kind: EmailKind, unread: Bool = false, body: String? = nil) {
-            list.append(Item(id: id, minutesAgo: minutes, from: from, subject: subject, snippet: snippet, body: body ?? snippet, kind: kind, unread: unread))
+        func add(_ id: String, _ minutes: Int, _ from: String, _ subject: String, _ snippet: String, _ kind: EmailKind, unread: Bool = false, body: String? = nil, invite: String? = nil) {
+            list.append(Item(id: id, minutesAgo: minutes, from: from, subject: subject, snippet: snippet, body: body ?? snippet, kind: kind, unread: unread, invite: invite))
         }
+        add("d0a1", today(25), "Przychodnia Zdrowie <rejestracja@przychodnia.example>", "Lolek test – wizyta kontrolna", "Przypominamy o wizycie kontrolnej 14.01.2027 o godz. 10:30.", .updates,
+            body: "Dzień dobry,\n\nprzypominamy o wizycie kontrolnej 14.01.2027 o godz. 10:30.\nAdres: ul. Marszałkowska 10, Warszawa\n\nProsimy o potwierdzenie obecności. Termin płatności za poprzednią wizytę: 20.10.2026.")
+        add("d0a2", today(70), "Sarah Mitchell <sarah.mitchell@example.com>", "Team sync", "Can we do Thursday at 3pm? Room 4B.", .person,
+            body: "Hi,\n\ncan we do Thursday at 3pm? I booked the small room.\nLocation: Room 4B\n\nSarah")
+        add("d0a3", today(100), "Google Calendar <calendar-notification@google.example>", "Invitation: Przegląd projektu", "Zaproszenie na 20 stycznia 2027, 15:00 - 16:00.", .updates,
+            body: "Zaproszenie na spotkanie. Szczegóły w załączonym pliku.",
+            invite: "BEGIN:VCALENDAR\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nDTSTART;TZID=Europe/Warsaw:20270120T150000\r\nDTEND;TZID=Europe/Warsaw:20270120T160000\r\nSUMMARY:Lolek test – przegląd projektu\r\nLOCATION:Google Meet\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n")
         add("a001", today(12), "Anna Nowak <anna.nowak@example.com>", "Re: Weekend w Krakowie", "Super, to bierzemy ten apartament przy Plantach. Wyślę Ci link do rezerwacji jeszcze dziś wieczorem.", .person, unread: true,
             body: "Cześć!\n\nSuper, to bierzemy ten apartament przy Plantach. Wyślę Ci link do rezerwacji jeszcze dziś wieczorem. Koszt to 640 zł za dwie noce, płatne przy zameldowaniu.\n\nAnia")
         add("a002", today(55), "Delta Air Lines <no-reply@delta.example>", "Your flight DL 218 is delayed", "New departure time 18:40. We apologise for the inconvenience.", .updates, unread: true,
@@ -83,7 +91,7 @@ public final class FixtureMailbox: EmailProviding, MailboxPaging, @unchecked Sen
 
     public func message(id: String) async throws -> EmailMessage {
         guard let item = items.first(where: { $0.id == id }) else { throw ToolError("That email no longer exists.") }
-        return EmailMessage(summary: summary(item), to: label, body: item.body)
+        return EmailMessage(summary: summary(item), to: label, body: item.body, invite: item.invite)
     }
 
     private func summary(_ item: Item) -> EmailSummary {
@@ -97,9 +105,13 @@ public final class FixtureMailbox: EmailProviding, MailboxPaging, @unchecked Sen
         var before: Double?
         var unread = false
         var primaryOnly = false
+        var eventsOnly = false
         var from: String?
         var words: [String] = []
         var rest = query
+        // The Events filter is a Gmail OR-group ({subject:(...) filename:ics}); the fixture only needs to know it was asked.
+        if rest.contains("filename:ics") { eventsOnly = true }
+        rest = rest.replacingOccurrences(of: "\\{[^}]*\\}", with: " ", options: .regularExpression)
         if let range = rest.range(of: "from:\\(([^)]*)\\)", options: .regularExpression) {
             from = String(rest[range]).dropFirst(6).dropLast().lowercased()
             rest.removeSubrange(range)
@@ -118,6 +130,7 @@ public final class FixtureMailbox: EmailProviding, MailboxPaging, @unchecked Sen
             if let before, date >= before { return false }
             if unread, !item.unread { return false }
             if primaryOnly, item.kind != .person { return false }
+            if eventsOnly, item.invite == nil, !AppointmentExtractor.mentionsDateAndTime(item.subject + "\n" + item.body, now: now) { return false }
             if let from, !item.from.lowercased().contains(from) { return false }
             let haystack = (item.subject + " " + item.snippet + " " + item.from).lowercased()
             return words.allSatisfy { haystack.contains($0) }

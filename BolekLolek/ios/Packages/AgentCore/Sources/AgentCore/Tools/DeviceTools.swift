@@ -170,7 +170,13 @@ public struct ListCalendarEventsTool: Tool {
         let args = try ToolArguments.decode(Args.self, from: argumentsJSON)
         let now = clock.now()
         let from = args.from.flatMap { ToolDates.parse($0, now: now, calendar: clock.calendar) } ?? clock.calendar.startOfDay(for: now)
-        let to = args.to.flatMap { ToolDates.parse($0, now: now, calendar: clock.calendar) } ?? from.addingTimeInterval(7 * 86_400)
+        var to = args.to.flatMap { ToolDates.parse($0, now: now, calendar: clock.calendar) } ?? from.addingTimeInterval(7 * 86_400)
+        // "Events on 2027-01-20" arrives as from = to = that date (or only a date for `to`): that means the whole day.
+        let endIsDateOnly = args.to.map { $0.trimmingCharacters(in: .whitespaces).count <= 10 && !$0.contains(":") } ?? false
+        if endIsDateOnly || to <= from {
+            let dayStart = clock.calendar.startOfDay(for: endIsDateOnly ? to : from)
+            to = clock.calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart.addingTimeInterval(86_400)
+        }
         let events = try await calendar.events(from: from, to: to).sorted { $0.start < $1.start }
         guard !events.isEmpty else { return "No events between \(ToolDates.describe(from, calendar: clock.calendar)) and \(ToolDates.describe(to, calendar: clock.calendar))." }
         return events.map { event in

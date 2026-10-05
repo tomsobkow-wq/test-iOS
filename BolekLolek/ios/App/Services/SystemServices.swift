@@ -107,9 +107,13 @@ final class EventKitCalendar: CalendarProviding, @unchecked Sendable {
     func removeTestEvents() async {
         guard (try? await store.requestFullAccessToEvents()) == true else { return }
         let from = Date().addingTimeInterval(-86400 * 30), to = Date().addingTimeInterval(86400 * 800)
-        for event in store.events(matching: store.predicateForEvents(withStart: from, end: to, calendars: nil)) where event.title?.hasPrefix("Lolek test") == true {
-            try? store.remove(event, span: .thisEvent)
+        // Only events a test run can have made: "Lolek test…" and the made-up invite title a failed run once added by mistake.
+        var removed = 0
+        for event in store.events(matching: store.predicateForEvents(withStart: from, end: to, calendars: nil))
+        where event.title?.hasPrefix("Lolek test") == true || event.title == "Przegląd projektu" {
+            if (try? store.remove(event, span: .thisEvent)) != nil { removed += 1 }
         }
+        await NotificationDebug.dump(reason: "calendar cleanup removed \(removed) test event(s)")
     }
     #endif
 

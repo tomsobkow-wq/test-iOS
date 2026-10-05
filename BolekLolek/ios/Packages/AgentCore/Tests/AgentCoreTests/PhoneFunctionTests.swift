@@ -124,3 +124,40 @@ final class CallAndTextSafetyTests: XCTestCase {
         XCTAssertTrue(reply.contains("still has to tap Send"))
     }
 }
+
+private struct DayCalendar: CalendarProviding {
+    let event: CalendarEventInfo
+    func events(from: Date, to: Date) async throws -> [CalendarEventInfo] { (event.start >= from && event.start < to) ? [event] : [] }
+    func addEvent(title: String, start: Date, end: Date, location: String?) async throws -> CalendarEventInfo { event }
+}
+
+final class CalendarDayRangeTests: XCTestCase {
+    private var cal: Calendar { var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "Australia/Perth")!; return c }
+
+    private func tool() -> ListCalendarEventsTool {
+        let start = cal.date(from: DateComponents(year: 2027, month: 1, day: 20, hour: 22))!
+        let event = CalendarEventInfo(title: "Evening call", start: start, end: start.addingTimeInterval(3600))
+        let now = cal.date(from: DateComponents(year: 2026, month: 10, day: 5, hour: 10))!
+        return ListCalendarEventsTool(calendar: DayCalendar(event: event), clock: ToolClock(now: { now }, calendar: cal))
+    }
+
+    func testSameDateForBothEndsMeansTheWholeDay() async throws {
+        let text = try await tool().run(argumentsJSON: #"{"from":"2027-01-20","to":"2027-01-20"}"#)
+        XCTAssertTrue(text.contains("Evening call"), text)
+    }
+
+    func testOnlyFromGivenStillFindsAnEveningEventThatDay() async throws {
+        let text = try await tool().run(argumentsJSON: #"{"from":"2027-01-20"}"#)
+        XCTAssertTrue(text.contains("Evening call"), text)
+    }
+
+    func testDateOnlyEndIncludesThatWholeDay() async throws {
+        let text = try await tool().run(argumentsJSON: #"{"from":"2027-01-19","to":"2027-01-20"}"#)
+        XCTAssertTrue(text.contains("Evening call"), text)
+    }
+
+    func testAnotherDayIsStillEmpty() async throws {
+        let text = try await tool().run(argumentsJSON: #"{"from":"2027-01-21","to":"2027-01-21"}"#)
+        XCTAssertTrue(text.hasPrefix("No events"), text)
+    }
+}

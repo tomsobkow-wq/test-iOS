@@ -36,11 +36,19 @@ public struct EmailMessage: Sendable, Equatable {
     public let summary: EmailSummary
     public let to: String
     public let body: String
+    /// The text of an attached calendar invite (.ics), when there is one.
+    public let invite: String?
 
-    public init(summary: EmailSummary, to: String, body: String) {
+    public init(summary: EmailSummary, to: String, body: String, invite: String? = nil) {
         self.summary = summary
         self.to = to
         self.body = body
+        self.invite = invite
+    }
+
+    /// Appointments found by code: the invite if present, otherwise dates with times written in the text.
+    public func appointments(now: Date = Date(), calendar: Calendar = .current) -> [AppointmentCandidate] {
+        AppointmentExtractor.candidates(subject: summary.subject, body: body, invite: invite, received: summary.date, now: now, calendar: calendar)
     }
 }
 
@@ -157,7 +165,14 @@ public struct GmailClient: EmailProviding, MailboxPaging {
         let object = try await get(try url(for: id, format: "full"))
         guard let summary = Self.summary(from: object) else { throw ToolError("That email could not be read.") }
         let payload = object["payload"] as? [String: Any] ?? [:]
-        return EmailMessage(summary: summary, to: Self.header("To", in: payload) ?? "", body: GmailParsing.body(of: payload))
+        var invite: String?
+        if let part = GmailParsing.calendarPart(in: payload) {
+            if let inline = part.data { invite = GmailParsing.decodeBase64URL(inline) }
+            else if let attachment = part.attachmentId, attachment.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-" || $0 == "_") }),
+                    let url = URL(string: "\(Self.base)/\(id)/attachments/\(attachment)"),
+                    let reply = try? await get(url), let data = reply["data"] as? String { invite = GmailParsing.decodeBase64URL(data) }
+        }
+        return EmailMessage(summary: summary, to: Self.header("To", in: payload) ?? "", body: GmailParsing.body(of: payload), invite: invite)
     }
 
     private func summary(id: String) async throws -> EmailSummary? {
@@ -256,6 +271,19 @@ enum GmailParsing {
         for child in (part["parts"] as? [[String: Any]]) ?? [] {
             if let found = text(in: child, mime: mime) { return found }
         }
+        return nil
+    }
+
+    /// The first calendar-invite part (text/calendar or a .ics file), with its inline data or its attachment id.
+    static func calendarPart(in part: [String: Any]) -> (data: String?, attachmentId: String?)? {
+        let mime = (part["mimeType"] as? String)?.lowercased() ?? ""
+        let name = (part["filename"] as? String)?.lowercased() ?? ""
+        if mime.hasPrefix("text/calendar") || name.hasSuffix(".ics") {
+            let body = part["body"] as? [String: Any]
+            let data = body?["data"] as? String, attachment = body?["attachmentId"] as? String
+            if data != nil || attachment != nil { return (data, attachment) }
+        }
+        for child in (part["parts"] as? [[String: Any]]) ?? [] { if let found = calendarPart(in: child) { return found } }
         return nil
     }
 

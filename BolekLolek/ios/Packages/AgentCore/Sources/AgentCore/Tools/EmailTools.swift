@@ -4,7 +4,7 @@ public enum EmailToolbox {
     /// Email is read on the phone by Lolek only. Bolek runs in the cloud and never gets these tools,
     /// and nothing here sends mail content to our servers.
     public static func tools(provider: any EmailProviding, opener: any URLOpening, clock: ToolClock = ToolClock()) -> [any Tool] {
-        [SearchEmailTool(provider: provider, clock: clock), ReadEmailTool(provider: provider), ComposeEmailTool(opener: opener)]
+        [SearchEmailTool(provider: provider, clock: clock), ReadEmailTool(provider: provider, clock: clock), ComposeEmailTool(opener: opener)]
     }
 }
 
@@ -91,6 +91,25 @@ struct LooseBool: Decodable {
     }
 }
 
+/// Appointments found by code, written so a small model can copy the values into add_calendar_event.
+enum AppointmentEvidence {
+    static func lines(for message: EmailMessage, clock: ToolClock) -> String {
+        let found = message.appointments(now: clock.now(), calendar: clock.calendar).filter { !$0.isCancelled }
+        guard !found.isEmpty else { return "" }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = clock.calendar
+        formatter.timeZone = clock.calendar.timeZone
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
+        var out = "\nAppointments found in this email by the app (exact values; to add one to the calendar call add_calendar_event with them):"
+        for (index, item) in found.enumerated() {
+            out += "\n\(index + 1). title: \(item.title) | start: \(formatter.string(from: item.start)) | end: \(formatter.string(from: item.effectiveEnd))"
+            if let location = item.location { out += " | location: \(location)" }
+        }
+        return out
+    }
+}
+
 public struct ReadEmailTool: Tool, ConditionallyAvailable {
     public let name = "read_email"
     public let description = LocalizedText(
@@ -101,10 +120,14 @@ public struct ReadEmailTool: Tool, ConditionallyAvailable {
     public let tier = ToolTier.lolek
     public let risk = ToolRisk.read
     let provider: any EmailProviding
+    let clock: ToolClock
 
     struct Args: Decodable { let id: String }
 
-    public init(provider: any EmailProviding) { self.provider = provider }
+    public init(provider: any EmailProviding, clock: ToolClock = ToolClock()) {
+        self.provider = provider
+        self.clock = clock
+    }
 
     public func isAvailable() async -> Bool { await provider.isConnected() }
 
@@ -117,7 +140,7 @@ public struct ReadEmailTool: Tool, ConditionallyAvailable {
         To: \(email.to)
         Subject: \(EmailSanitizer.clean(email.summary.subject))
 
-        \(EmailSanitizer.clean(email.body))
+        \(EmailSanitizer.clean(email.body))\(AppointmentEvidence.lines(for: email, clock: clock))
         """
     }
 }

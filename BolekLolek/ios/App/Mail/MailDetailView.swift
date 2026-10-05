@@ -14,6 +14,9 @@ struct MailDetailView: View {
     @Environment(\.openURL) private var openURL
     @State private var message: EmailMessage?
     @State private var failure: String?
+    @State private var appointments: [AppointmentCandidate] = []
+    @State private var states: [String: AppointmentCard.State] = [:]
+    @State private var editing: AppointmentCandidate?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,6 +26,13 @@ struct MailDetailView: View {
                         .font(.system(size: 24, weight: .bold))
                         .fixedSize(horizontal: false, vertical: true)
                     sender
+                    ForEach(appointments) { candidate in
+                        AppointmentCard(
+                            candidate: candidate, state: states[candidate.id] ?? .idle,
+                            onAdd: { editing = candidate },
+                            onOpenCalendar: { openCalendar(at: candidate.start) }
+                        )
+                    }
                     Divider()
                     bodyText
                     Label("On this iPhone only", systemImage: "lock.fill")
@@ -39,6 +49,11 @@ struct MailDetailView: View {
         .tint(mailAccent)
         .presentationDragIndicator(.visible)
         .task { await load() }
+        .sheet(item: $editing) { candidate in
+            AppointmentSheet(candidate: candidate) { outcome, start in
+                states[candidate.id] = outcome == .added ? .added : .alreadyThere
+            }
+        }
     }
 
     private var sender: some View {
@@ -93,7 +108,16 @@ struct MailDetailView: View {
     }
 
     private func load() async {
-        do { message = try await provider.message(id: item.id) } catch { failure = (error as? ToolError)?.message ?? error.localizedDescription }
+        do {
+            let loaded = try await provider.message(id: item.id)
+            message = loaded
+            appointments = loaded.appointments()
+        } catch { failure = (error as? ToolError)?.message ?? error.localizedDescription }
+    }
+
+    /// Opens the Calendar app on that day.
+    private func openCalendar(at date: Date) {
+        if let url = URL(string: "calshow:\(Int(date.timeIntervalSinceReferenceDate))") { openURL(url) }
     }
 
     /// Opens the Mail app with the draft addressed; the user writes and sends it there.

@@ -3,7 +3,7 @@ import Observation
 import SwiftUI
 
 enum MailFilter: String, CaseIterable, Identifiable {
-    case today, unread, people, all
+    case today, unread, people, events, all
     var id: String { rawValue }
 
     var title: LocalizedStringKey {
@@ -11,6 +11,7 @@ enum MailFilter: String, CaseIterable, Identifiable {
         case .today: "Today"
         case .unread: "Unread"
         case .people: "People"
+        case .events: "Events"
         case .all: "All"
         }
     }
@@ -34,6 +35,8 @@ final class MailModel {
     private(set) var errorText: String?
     private(set) var failedAccounts: [String] = []
     private(set) var hasLoaded = false
+    /// Messages whose subject or preview mentions a date with a time (shown with a small calendar mark in the list).
+    private(set) var calendarHints: Set<String> = []
 
     private var feed: MailFeed?
     private var generation = 0
@@ -48,6 +51,7 @@ final class MailModel {
         case .today: spec.when = .today
         case .unread: spec.unread = true
         case .people: spec.raw = "category:primary"
+        case .events: spec.raw = "in:inbox {subject:(appointment OR meeting OR invitation OR invite OR reservation OR booking OR wizyta OR spotkanie OR termin OR rezerwacja OR zaproszenie) filename:ics}"
         case .all: break
         }
         let text = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -75,6 +79,7 @@ final class MailModel {
                 guard mine == generation else { return }
                 self.feed = feed
                 items = batch
+                noteCalendarHints(batch, replacing: true)
                 hasMore = !(await feed.isExhausted)
                 failedAccounts = await feed.failedAccounts
             } catch {
@@ -93,10 +98,16 @@ final class MailModel {
             let batch = (try? await feed.next(pageSize)) ?? []
             guard mine == generation else { return }
             items += batch
+            noteCalendarHints(batch, replacing: false)
             hasMore = !(await feed.isExhausted) && !batch.isEmpty
             failedAccounts = await feed.failedAccounts
             isLoadingMore = false
         }
+    }
+
+    private func noteCalendarHints(_ batch: [EmailSummary], replacing: Bool) {
+        if replacing { calendarHints = [] }
+        for item in batch where AppointmentExtractor.mentionsDateAndTime(item.subject + "\n" + item.snippet) { calendarHints.insert(item.id) }
     }
 
     func refreshAll() async {

@@ -85,7 +85,7 @@ public struct MultiEmailProvider: EmailProviding {
         return EmailMessage(
             summary: EmailSummary(id: id, from: summary.from, subject: summary.subject, date: summary.date, snippet: summary.snippet,
                                   isUnread: summary.isUnread, account: list.count > 1 ? list[index].label : nil),
-            to: email.to, body: email.body
+            to: email.to, body: email.body, invite: email.invite
         )
     }
 }
