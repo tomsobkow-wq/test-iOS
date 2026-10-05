@@ -27,12 +27,12 @@ final class ChatViewModel {
 
     private let session: AgentSession
     private let isOnline: (@MainActor () -> Bool)?
-    private let willSend: (@MainActor () -> Void)?
+    private let willSend: (@MainActor (String) -> Void)?
 
     init(
         mode: AgentMode, provider: any ModelProvider, registry: ToolRegistry, documents: DocumentSupport? = nil,
         planner: (any TurnPlanner)? = nil, fixedPromptLanguage: ConversationLanguage? = nil,
-        isOnline: (@MainActor () -> Bool)? = nil, willSend: (@MainActor () -> Void)? = nil
+        isOnline: (@MainActor () -> Bool)? = nil, willSend: (@MainActor (String) -> Void)? = nil
     ) {
         self.documents = documents
         self.isOnline = isOnline
@@ -100,7 +100,7 @@ final class ChatViewModel {
         errorText = nil
         isWorking = true
         streamingText = ""
-        willSend?()
+        willSend?(text)
         // Shown right away; replaced by the session transcript when the turn ends.
         messages.append(ChatMessage(role: .user, text: text))
 

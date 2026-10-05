@@ -48,7 +48,7 @@ struct RootView: View {
         VStack(spacing: 0) {
             ModeHeader(selection: $model.mode, isOnline: model.network.isOnline)
             Divider()
-            ChatView(viewModel: model.current, setup: model.mode == .lolek ? model.lolekSetup : nil, handoff: model.handoff, onAskBolek: { model.askBolek($0) })
+            ChatView(viewModel: model.current, setup: model.mode == .lolek ? model.lolekSetup : nil, handoff: model.handoff, mail: model.mode == .lolek ? model.mail : nil, onAskBolek: { model.askBolek($0) })
                 .id(model.mode)
         }
         .tint(model.mode.accent)

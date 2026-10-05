@@ -350,6 +350,66 @@
           }
         }
       }
+    },
+    "Connect Gmail": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Połącz Gmaila"
+          }
+        }
+      }
+    },
+    "Disconnect Gmail": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odłącz Gmaila"
+          }
+        }
+      }
+    },
+    "Gmail is connected. I read your email on this iPhone only: nothing from it goes to Bolek or any server. Try “any unread email?”": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail jest połączony. Czytam Twoją pocztę tylko na tym iPhonie: nic z niej nie trafia do Bolka ani na żaden serwer. Spróbuj: „czy mam nieprzeczytane maile?”"
+          }
+        }
+      }
+    },
+    "Gmail needs permission to read your email. Connect again and leave “Read your email” ticked.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail potrzebuje zgody na czytanie poczty. Połącz ponownie i zostaw zaznaczone „Czytanie poczty”."
+          }
+        }
+      }
+    },
+    "Google did not finish the sign-in. Try again.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google nie dokończył logowania. Spróbuj ponownie."
+          }
+        }
+      }
+    },
+    "Gmail was not connected.": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gmail nie został połączony."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

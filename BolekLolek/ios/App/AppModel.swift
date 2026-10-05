@@ -13,6 +13,8 @@ final class AppModel {
     let lolekSetup = LolekSetupModel()
     let network = NetworkStatus()
     let handoff = HandoffCenter()
+    /// Gmail lives with Lolek only: on this phone, never reaching Bolek or our servers.
+    let mail = MailConnection()
     private let lolekProvider = LlamaCppProvider()
     private var connecting = false
 
@@ -22,7 +24,7 @@ final class AppModel {
         lolek = ChatViewModel(
             mode: .lolek,
             provider: lolekProvider,
-            registry: Self.makeRegistry(extra: [OfferHandoffTool(sink: handoff)]),
+            registry: Self.makeRegistry(extra: [OfferHandoffTool(sink: handoff)] + EmailToolbox.tools(provider: mail.provider, opener: AppServices.device.urlOpener)),
             documents: DocumentSupport(
                 store: AppServices.documents,
                 summarize: { [lolekProvider] chunks, language in
@@ -32,7 +34,7 @@ final class AppModel {
             ),
             planner: CompositeTurnPlanner([WebIntentPlanner(), DocumentPlanner(store: AppServices.documents)]),
             fixedPromptLanguage: .en,
-            willSend: { [handoff] in handoff.clear() }
+            willSend: { [handoff] text in handoff.begin(userText: text) }
         )
         bolek = ChatViewModel(
             mode: .bolek,
@@ -47,7 +49,7 @@ final class AppModel {
         #if DEBUG
         // Screenshot helpers: BOLEK_START_MODE=bolek, BOLEK_DEMO_HANDOFF=1.
         if ProcessInfo.processInfo.environment["BOLEK_START_MODE"] == "bolek" { mode = .bolek }
-        if ProcessInfo.processInfo.environment["BOLEK_DEMO_HANDOFF"] == "1" { Task { await handoff.offer(request: "Sprawdź ceny lotów do Lizbony") } }
+        if ProcessInfo.processInfo.environment["BOLEK_DEMO_HANDOFF"] == "1" { Task { handoff.begin(userText: "Sprawdź ceny lotów do Lizbony"); await handoff.offer(request: "") } }
         #endif
         lolekSetup.onReady = { [weak lolek] in Task { @MainActor in lolek?.warmUp() } }
         // Under XCTest the tests load their own copy of the model; two would not fit in memory.

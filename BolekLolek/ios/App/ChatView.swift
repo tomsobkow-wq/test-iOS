@@ -10,6 +10,8 @@ struct ChatView: View {
     /// Only for Lolek: the one-time model download.
     var setup: LolekSetupModel?
     var handoff: HandoffCenter?
+    /// Only for Lolek: connect or disconnect Gmail from the + menu.
+    var mail: MailConnection?
     var onAskBolek: ((String) -> Void)?
 
     var body: some View {
@@ -70,7 +72,7 @@ struct ChatView: View {
                 .onChange(of: viewModel.streamingText) { scrollToBottom(proxy) }
             }
 
-            Composer(viewModel: viewModel)
+            Composer(viewModel: viewModel, mail: mail)
         }
     }
 
@@ -199,6 +201,7 @@ extension ApprovalText {
 
 struct Composer: View {
     @Bindable var viewModel: ChatViewModel
+    var mail: MailConnection?
     @State private var showFiles = false
     @State private var photo: PhotosPickerItem?
 
@@ -210,6 +213,19 @@ struct Composer: View {
                 Menu {
                     Button { showFiles = true } label: { Label("Files", systemImage: "folder") }
                     PhotosPicker(selection: $photo, matching: .images) { Label("Photos", systemImage: "photo") }
+                    if let mail, mail.canConnect {
+                        if mail.isConnected {
+                            Button { Task { await mail.disconnect() } } label: { Label("Disconnect Gmail", systemImage: "envelope.badge.shield.half.filled") }
+                        } else {
+                            Button {
+                                Task {
+                                    if await mail.connect() {
+                                        viewModel.receive(notice: String(localized: "Gmail is connected. I read your email on this iPhone only: nothing from it goes to Bolek or any server. Try “any unread email?”"))
+                                    }
+                                }
+                            } label: { Label("Connect Gmail", systemImage: "envelope") }
+                        }
+                    }
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 17, weight: .semibold))

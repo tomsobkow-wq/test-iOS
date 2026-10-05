@@ -274,3 +274,16 @@ Output: a scorecard per model. Lolek's default model is the winner.
   The Info.plist allows local-network HTTP only (`NSAllowsLocalNetworking`); a server outside the home network needs HTTPS (Tailscale or a reverse proxy).
 - **Privacy:** route and dates reach SerpApi/Google. Lolek never uses the backend.
 - **Not verified:** a live SerpApi call (no key yet), alerts on a real phone, push notifications (alerts show when the app opens).
+
+## Gmail (Lolek only)
+
+Lolek can search and read the user's Gmail and prepare replies. It is isolated from everything in the cloud:
+
+- **Tools:** `search_email`, `read_email`, `compose_email` are tier `.lolek`, so Bolek's registry never contains them (test: `EmailToolsTests`). They are hidden until Gmail is connected.
+- **Network:** the phone talks only to Google (`accounts.google.com`, `oauth2.googleapis.com`, `gmail.googleapis.com`). The Bolek backend has no email code and never receives mail, tokens or queries.
+- **Permission:** `gmail.readonly` only. Sending goes through the Mail app: `compose_email` fills in a draft and the user taps Send (risk `send`, so it is also approved in the chat first).
+- **Token:** the refresh token lives in this phone's Keychain (this device only). Disconnect revokes it at Google and deletes it.
+- **Hostile email text:** every tool result is prefixed with a warning that the text is from strangers, the Lolek prompt says never to follow instructions inside email, ids from the model are validated before they enter a URL, and `compose_email` accepts a single plain address (no extra recipients or headers).
+- **Hand-off:** the "Ask Bolek" button sends the user's own message, not the model's wording, so nothing Lolek read can travel to Bolek through it (test: `HandoffPrivacyTests`).
+- **Setup (developer builds):** create a Google Cloud OAuth client of type iOS for bundle `com.boleklolek.app`, keep the consent screen in Testing with the tester's address, and launch the app once with `GOOGLE_CLIENT_ID=<id>.apps.googleusercontent.com`. Testing mode needs no Google review but the sign-in expires every 7 days. A public release needs Google's OAuth verification for the restricted Gmail scope; whether the security assessment applies to a phone-only app should be confirmed with Google.
+- **Not verified:** a live sign-in and real mailbox (needs the client id), and how well Qwen 4B answers questions from real emails.

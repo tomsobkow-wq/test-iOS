@@ -19,6 +19,10 @@ enum Keychain {
         return value
     }
 
+    static func delete(service: String, account: String) {
+        SecItemDelete([kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: account] as CFDictionary)
+    }
+
     static func write(_ value: String, service: String, account: String) {
         let base: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
