@@ -330,6 +330,26 @@
           }
         }
       }
+    },
+    "Watch flight prices from %@ to %@ (%@) and alert me at %@ or below?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obserwować ceny lotów z %@ do %@ (%@) i powiadomić mnie, gdy spadną do %@ lub niżej?"
+          }
+        }
+      }
+    },
+    "Stop watching flight %@?": {
+      "localizations": {
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przestać obserwować lot %@?"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

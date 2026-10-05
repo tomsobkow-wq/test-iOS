@@ -37,4 +37,24 @@ final class BolekFlowUITests: XCTestCase {
         send("Find flights from Warsaw to Lisbon on 2026-11-19, back 2026-11-26", waitSeconds: 60)
         shot("04-flights-reply")
     }
+
+    func testWatchNeedsApprovalThenLolekAnswers() throws {
+        let bolek = app.buttons["Bolek"].firstMatch
+        if bolek.waitForExistence(timeout: 10) { bolek.tap() }
+        send("Watch flights from Warsaw to Lisbon on 2026-12-03, back 2026-12-10, and alert me below 700 PLN", waitSeconds: 45)
+        shot("05-approval-asked")
+        let allow = app.buttons["Allow"].firstMatch
+        if allow.waitForExistence(timeout: 20) {
+            allow.tap()
+            Thread.sleep(forTimeInterval: 30)
+            shot("06-watch-created")
+        } else {
+            XCTFail("no approval prompt appeared")
+        }
+        let lolek = app.buttons["Lolek"].firstMatch
+        if lolek.waitForExistence(timeout: 10) { lolek.tap() }
+        shot("07-lolek-open")
+        send("What can you do without internet?", waitSeconds: 60)
+        shot("08-lolek-reply")
+    }
 }

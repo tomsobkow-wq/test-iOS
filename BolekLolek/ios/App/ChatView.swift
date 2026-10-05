@@ -83,7 +83,11 @@ extension Text {
     /// Bolek and Lolek write **bold** and lists in Markdown; show them formatted, keeping line breaks.
     static func formatted(_ markdown: String) -> Text {
         let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        if let attributed = try? AttributedString(markdown: markdown, options: options) { return Text(attributed) }
+        if var attributed = try? AttributedString(markdown: markdown, options: options) {
+            // Text can come from web results; never turn it into a tappable link (a link label can hide its target).
+            for run in attributed.runs where run.link != nil { attributed[run.range].link = nil }
+            return Text(attributed)
+        }
         return Text(verbatim: markdown)
     }
 }
@@ -158,12 +162,38 @@ struct PillButton: View {
 /// Turns a pending tool call into a sentence the user can approve at a glance.
 enum ApprovalText {
     static func question(for request: ApprovalRequest) -> String {
+        if let sentence = flightSentence(for: request) { return sentence }
         guard let data = request.argumentsJSON.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               !object.isEmpty
         else { return request.summary }
         let details = object.keys.sorted().map { "\($0): \(object[$0].map { "\($0)" } ?? "")" }.joined(separator: "\n")
         return request.summary + "\n\n" + details
+    }
+}
+
+extension ApprovalText {
+    /// Plain-language question for the flight watch tools; the server's own description is written for the model.
+    static func flightSentence(for request: ApprovalRequest) -> String? {
+        guard let data = request.argumentsJSON.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        func text(_ key: String) -> String? {
+            if let string = object[key] as? String { return string }
+            if let number = object[key] as? NSNumber { return number.stringValue }
+            return nil
+        }
+        switch request.toolName {
+        case "watch_flight_price":
+            guard let origin = text("origin"), let destination = text("destination"), let depart = text("depart_date"), let limit = text("max_price") else { return nil }
+            let dates = text("return_date").map { "\(depart) → \($0)" } ?? depart
+            let currency = text("currency") ?? "PLN"
+            return String(localized: "Watch flight prices from \(origin) to \(destination) (\(dates)) and alert me at \(limit) \(currency) or below?")
+        case "stop_flight_watch":
+            guard let id = text("id") else { return nil }
+            return String(localized: "Stop watching flight \(id)?")
+        default:
+            return nil
+        }
     }
 }
 
