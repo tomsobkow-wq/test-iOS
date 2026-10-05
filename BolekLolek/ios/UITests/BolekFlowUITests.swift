@@ -606,4 +606,29 @@ final class BolekFlowUITests: XCTestCase {
         app.launch()
         Thread.sleep(forTimeInterval: 6)
     }
+
+    /// Measures the fixed part of every Lolek prompt: one greeting, then the per-call numbers are read from the app's timing log.
+    func testLolekGreetingForPromptSize() throws {
+        app.terminate()
+        app.launchEnvironment["BOLEK_DEBUG_MAIL_FIXTURE"] = "1"
+        app.launch()
+        Thread.sleep(forTimeInterval: 6)
+        let a = ask("Hi", timeout: 180)
+        let b = ask("Thanks", timeout: 180)
+        let note = XCTAttachment(string: "hi \(Int(a))s, thanks \(Int(b))s")
+        note.name = "timing"
+        note.lifetime = .keepAlways
+        add(note)
+    }
+
+    /// Four chat turns over the made-up mailbox, only to read the timing log afterwards.
+    func testFourMailTurnsForTiming() throws {
+        app.terminate()
+        app.launchEnvironment["BOLEK_DEBUG_MAIL_FIXTURE"] = "1"
+        app.launch()
+        Thread.sleep(forTimeInterval: 6)
+        for question in ["What emails did I get today?", "Ile mam nieprzeczytanych maili?", "Which of today's emails are from real people?", "How many promotion emails today?"] {
+            _ = ask(question, timeout: 200)
+        }
+    }
 }

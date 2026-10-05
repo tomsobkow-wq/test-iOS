@@ -96,6 +96,9 @@ public struct EmailPlanner: TurnPlanner {
         }
 
         let counting = has(["ile", "how", "count", "policz"])
+        // "How many…?" alone needs the counts, not the list; asking which, what or to list them still gets the list.
+        let wantsList = has(["which", "what", "who", "list", "show", "jakie", "jaki", "ktore", "kto", "wymien", "pokaz", "od"]) || folded.contains(" from ")
+        if counting, !wantsList { args["counts_only"] = true }
         // Only act when there is something concrete to look up; otherwise the model decides with the tools it has.
         guard !args.isEmpty || counting else { return [] }
         return [ToolCall(id: "planned-search", name: "search_email", argumentsJSON: Self.json(args))]

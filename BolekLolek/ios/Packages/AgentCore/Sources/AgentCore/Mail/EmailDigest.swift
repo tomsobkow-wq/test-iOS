@@ -24,14 +24,15 @@ public enum EmailDigest {
         return Collected(items: items, complete: !more, failedAccounts: await feed.failedAccounts, estimatedTotal: await feed.estimatedTotal)
     }
 
-    private static let limits: [(EmailKind, String, Int)] = [(.person, "PEOPLE", 12), (.updates, "UPDATES AND NOTICES", 6), (.promotions, "PROMOTIONS", 3), (.social, "SOCIAL", 2)]
+    private static let limits: [(EmailKind, String, Int)] = [(.person, "PEOPLE", 8), (.updates, "UPDATES AND NOTICES", 4), (.promotions, "PROMOTIONS", 2), (.social, "SOCIAL", 1)]
 
     /// `only` limits the list to one group when the user asked about that group; the other groups are still counted.
-    public static func render(_ collected: Collected, searched: String, accounts: [String], only: EmailKind? = nil, clock: ToolClock = ToolClock()) -> String {
+    /// `countsOnly` is for questions that ask only how many: the counts are exact and no message lines are listed, which keeps the evidence tiny.
+    public static func render(_ collected: Collected, searched: String, accounts: [String], only: EmailKind? = nil, countsOnly: Bool = false, clock: ToolClock = ToolClock()) -> String {
         let items = collected.items
         let unread = items.filter(\.isUnread).count
         var lines: [String] = [EmailContent.warning]
-        lines.append("These results are everything you need: answer now, in the user's language, and do not call another tool unless the user asks to open one email. Use the counts exactly as given and never add emails that are not listed. Answer only what was asked and keep it short: at most 8 lines, no times unless asked.")
+        lines.append("These results are everything you need: answer now, in the user's language, and do not call another tool unless the user asks to open one email. Use the counts exactly as given and never add emails that are not listed. Answer only what was asked and keep it short: at most 6 lines, no times unless asked.")
         lines.append("Searched: \(searched). Mailboxes: \(accounts.joined(separator: ", ")).")
         if items.isEmpty {
             lines.append("Found 0 emails. Nothing matched: tell the user plainly and do not search again.")
@@ -41,6 +42,15 @@ public enum EmailDigest {
             lines.append("Found at least \(items.count) emails (\(unread) unread among them). More exist (about \(max(collected.estimatedTotal, items.count)) in total); only the newest \(items.count) were counted.")
         }
         for name in collected.failedAccounts { lines.append("Could not reach \(name): its results are missing. Tell the user.") }
+
+        if countsOnly, !items.isEmpty {
+            lines.append("The user asked only how many: answer with the counts, in one or two sentences, and do not list messages.")
+            for (kind, title, _) in limits {
+                let group = items.filter { $0.kind == kind }
+                if !group.isEmpty { lines.append("\(title): \(group.count) (\(group.filter(\.isUnread).count) unread)") }
+            }
+            return lines.joined(separator: "\n")
+        }
 
         if let only, !items.isEmpty {
             let others = limits.filter { $0.0 != only }.compactMap { kind, title, _ -> String? in
@@ -55,7 +65,7 @@ public enum EmailDigest {
             let groupUnread = group.filter(\.isUnread).count
             lines.append("")
             lines.append("\(title): \(group.count) (\(groupUnread) unread)\(group.count > limit ? ", newest \(limit) shown" : "")")
-            for item in group.prefix(limit) { lines.append(line(item, clock: clock, withSnippet: kind == .person)) }
+            for (index, item) in group.prefix(limit).enumerated() { lines.append(line(item, clock: clock, withSnippet: kind == .person && index < 4)) }
         }
         var hidden = 0
         for (kind, _, limit) in limits where only == nil || only == kind { hidden += max(0, items.filter { $0.kind == kind }.count - limit) }

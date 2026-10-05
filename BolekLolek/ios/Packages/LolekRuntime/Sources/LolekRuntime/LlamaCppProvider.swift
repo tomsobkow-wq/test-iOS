@@ -25,8 +25,14 @@ public actor LolekEngineHost {
         self.settings = settings
     }
 
+    /// Debug aid: called with a line whenever the model has to be (re)loaded into memory.
+    private var onLoad: (@Sendable (String) -> Void)?
+    public func setOnLoad(_ handler: @escaping @Sendable (String) -> Void) { onLoad = handler }
+
     public func loadedEngine() async throws -> LlamaEngine {
         if let engine { return engine }
+        let loadStart = Date()
+        defer { onLoad?("{\"event\":\"model_load\",\"seconds\":\(String(format: "%.1f", Date().timeIntervalSince(loadStart))),\"t\":\(Date().timeIntervalSince1970)}\n") }
         guard store.isInstalled(model) else { throw LolekError.modelNotInstalled(model.profile.displayName) }
         var settings = settings
         settings.contextTokens = min(settings.contextTokens, model.profile.contextTokens)
@@ -113,7 +119,12 @@ public struct LlamaCppProvider: ModelProvider {
             return !Task.isCancelled
         }
 
-        statsHandler?(stats)
+        var reported = stats
+        var checksum: UInt32 = 2_166_136_261
+        for byte in prompt.header.utf8 { checksum = (checksum ^ UInt32(byte)) &* 16_777_619 }
+        reported.headerChecksum = checksum
+        reported.headerCharacters = prompt.header.count
+        statsHandler?(reported)
         let parsed = ToolCallParser.parse(raw.value, tools: request.tools)
         return ModelResponse(text: parsed.text, toolCalls: parsed.calls)
     }

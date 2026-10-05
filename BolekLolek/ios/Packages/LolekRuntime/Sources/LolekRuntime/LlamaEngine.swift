@@ -33,6 +33,9 @@ public struct GenerationStats: Sendable, Equatable {
     public var checkpointTokens = 0
     public var checkpointBytes = 0
     public var generationSeconds = 0.0
+    /// Debug aid: a checksum and size of the fixed header (instructions and tools) this call used, to see when it changed.
+    public var headerChecksum: UInt32 = 0
+    public var headerCharacters = 0
     public var tokensPerSecond: Double { generationSeconds > 0 ? Double(generatedTokens) / generationSeconds : 0 }
 }
 

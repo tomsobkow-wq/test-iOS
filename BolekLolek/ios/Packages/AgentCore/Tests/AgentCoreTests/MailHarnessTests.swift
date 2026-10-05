@@ -111,6 +111,17 @@ final class EmailPlannerTests: XCTestCase {
         }
     }
 
+    func testHowManyAsksForCountsOnlyButWhichStillGetsTheList() async throws {
+        let counts = await plan("Ile mam nieprzeczytanych maili?")
+        XCTAssertEqual(args(try XCTUnwrap(counts.first))["counts_only"] as? Bool, true)
+        let counts2 = await plan("How many promotion emails today?")
+        XCTAssertEqual(args(try XCTUnwrap(counts2.first))["counts_only"] as? Bool, true)
+        let list = await plan("Which emails did I get today?")
+        XCTAssertNil(args(try XCTUnwrap(list.first))["counts_only"])
+        let who = await plan("How many unread emails from Delta?")
+        XCTAssertNil(args(try XCTUnwrap(who.first))["counts_only"], "a sender was named: list them")
+    }
+
     func testCountingQuestionPlansASearch() async {
         let calls = await plan("Ile maili mam w skrzynce?")
         XCTAssertEqual(calls.first?.name, "search_email")
@@ -269,6 +280,15 @@ final class SearchEmailHarnessTests: XCTestCase {
         XCTAssertTrue(result.contains("Not listed because the user asked only about one group"), result)
         XCTAssertTrue(result.contains("5 promotions"), result)
         XCTAssertLessThan(result.count, 1800, "small evidence keeps the small model fast")
+    }
+
+    func testCountsOnlyGivesExactCountsAndNoMessageLines() async throws {
+        let box = FixtureMailbox()
+        let tool = SearchEmailTool(provider: MultiEmailProvider { [.init(label: "demo@example.com", provider: box, paging: box)] })
+        let result = try await tool.run(argumentsJSON: #"{"when":"today","counts_only":true}"#)
+        XCTAssertTrue(result.contains("Found 17 emails") && result.contains("PEOPLE: 4") && result.contains("PROMOTIONS: 5"), result)
+        XCTAssertFalse(result.contains("Anna Nowak") || result.contains("Subject"), "no message lines in a counts answer: \(result)")
+        XCTAssertLessThan(result.count, 900)
     }
 
     func testUnreadFilterCountsOnlyUnread() async throws {

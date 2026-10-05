@@ -24,9 +24,8 @@ final class AppModel {
     /// Debug only: numbers about each model call (token counts and timings, never text) go to Documents/stats.jsonl.
     private let lolekProvider = LlamaCppProvider(statsHandler: { stats in
         guard let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
-        let line = "{\"t\":\(Date().timeIntervalSince1970),\"prompt\":\(stats.promptTokens),\"reused\":\(stats.reusedTokens),\"checkpoint\":\(stats.checkpointTokens),\"generated\":\(stats.generatedTokens),\"prefill_s\":\(String(format: "%.1f", stats.prefillSeconds)),\"gen_s\":\(String(format: "%.1f", stats.generationSeconds)),\"tps\":\(String(format: "%.1f", stats.tokensPerSecond))}\n"
-        let url = folder.appendingPathComponent("stats.jsonl")
-        if let handle = try? FileHandle(forWritingTo: url) { handle.seekToEndOfFile(); handle.write(Data(line.utf8)); try? handle.close() } else { try? Data(line.utf8).write(to: url) }
+        let line = "{\"t\":\(Date().timeIntervalSince1970),\"prompt\":\(stats.promptTokens),\"reused\":\(stats.reusedTokens),\"checkpoint\":\(stats.checkpointTokens),\"generated\":\(stats.generatedTokens),\"prefill_s\":\(String(format: "%.1f", stats.prefillSeconds)),\"gen_s\":\(String(format: "%.1f", stats.generationSeconds)),\"tps\":\(String(format: "%.1f", stats.tokensPerSecond)),\"hdr\":\(stats.headerChecksum),\"hdrchars\":\(stats.headerCharacters)}\n"
+        AppModel.logTiming(line)
     })
     #else
     private let lolekProvider = LlamaCppProvider()
@@ -67,6 +66,9 @@ final class AppModel {
         // (about 3 GB) if iOS asks for memory back.
         let host = lolekProvider.engineHost
         #if DEBUG
+        Task { await host.setOnLoad { AppModel.logTiming($0) } }
+        #endif
+        #if DEBUG
         // Screenshot helpers: BOLEK_START_MODE=bolek, BOLEK_DEMO_HANDOFF=1.
         if ProcessInfo.processInfo.environment["BOLEK_START_MODE"] == "bolek" { mode = .bolek }
         if ProcessInfo.processInfo.environment["BOLEK_DEBUG_CANCEL_ALARMS"] == "1" {
@@ -88,8 +90,20 @@ final class AppModel {
         let underTest = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
         if lolekSetup.isReady, !underTest { lolekSetup.onReady?() }
         NotificationCenter.default.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification, object: nil, queue: nil) { _ in
+            #if DEBUG
+            Self.logTiming("{\"event\":\"memory_warning\",\"t\":\(Date().timeIntervalSince1970)}\n")
+            #endif
             Task { await host.unload() }
         }
+    }
+
+    /// Debug only: appends a line to Documents/stats.jsonl (numbers about model calls, never text).
+    nonisolated static func logTiming(_ line: String) {
+        #if DEBUG
+        guard let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        let url = folder.appendingPathComponent("stats.jsonl")
+        if let handle = try? FileHandle(forWritingTo: url) { handle.seekToEndOfFile(); handle.write(Data(line.utf8)); try? handle.close() } else { try? Data(line.utf8).write(to: url) }
+        #endif
     }
 
     var current: ChatViewModel {
