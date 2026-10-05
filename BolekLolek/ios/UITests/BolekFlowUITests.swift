@@ -684,4 +684,16 @@ final class BolekFlowUITests: XCTestCase {
         // The pages used are drawn by the app as buttons (never tapped here: that would leave the app).
         XCTAssertTrue(app.buttons["source-chip"].firstMatch.waitForExistence(timeout: 5), "source buttons under the answer")
     }
+
+    func testBolekWatchesTheWebForNewListings() throws {
+        app.terminate()
+        app.launchEnvironment["BOLEK_START_MODE"] = "bolek"
+        app.launchEnvironment["BOLEK_DEBUG_TOOL_TRACE"] = "1"
+        app.launch()
+        Thread.sleep(forTimeInterval: 8)
+        let seconds = askHandlingPrompts("tell me when a new bmw r18 for sale appears in perth", approve: true, timeout: 150)
+        shot("151-web-watch \(Int(seconds))s")
+        _ = askHandlingPrompts("stop watching it", approve: true, timeout: 120)
+        shot("152-web-watch-stopped")
+    }
 }
