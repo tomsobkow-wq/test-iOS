@@ -117,6 +117,7 @@ final class EventKitCalendar: CalendarProviding, @unchecked Sendable {
         where event.title?.hasPrefix("Lolek test") == true || event.title == "Przegląd projektu" {
             if (try? store.remove(event, span: .thisEvent)) != nil { removed += 1 }
         }
+        await EventKitReminders().removeTestReminders()
         await NotificationDebug.dump(reason: "calendar cleanup removed \(removed) test event(s)")
     }
     #endif
@@ -165,6 +166,66 @@ final class EventKitCalendar: CalendarProviding, @unchecked Sendable {
         try store.save(event, span: .thisEvent)
         return CalendarEventInfo(title: title, start: start, end: end, location: location, id: event.eventIdentifier ?? "")
     }
+}
+
+// MARK: - Reminders (the iPhone's own Reminders app)
+
+final class EventKitReminders: RemindersProviding, @unchecked Sendable {
+    private let store = EKEventStore()
+
+    private func authorize() async throws {
+        guard try await store.requestFullAccessToReminders() else {
+            throw ToolError("Reminders access is turned off. Enable it in Settings (Apps, Bolek & Lolek, Reminders) to add reminders.")
+        }
+    }
+
+    func add(title: String, due: Date, repeats: ScheduledNotification.Repeat?) async throws -> ReminderInfo {
+        try await authorize()
+        guard let list = store.defaultCalendarForNewReminders() else { throw ToolError("There is no Reminders list that accepts new reminders.") }
+        let reminder = EKReminder(eventStore: store)
+        reminder.calendar = list
+        reminder.title = title
+        let calendar = Calendar.current
+        reminder.dueDateComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: due)
+        reminder.addAlarm(EKAlarm(absoluteDate: due))
+        if let repeats {
+            let frequency: EKRecurrenceFrequency = switch repeats { case .daily: .daily; case .weekly: .weekly; case .monthly: .monthly; case .yearly: .yearly }
+            reminder.addRecurrenceRule(EKRecurrenceRule(recurrenceWith: frequency, interval: 1, end: nil))
+        }
+        try store.save(reminder, commit: true)
+        return ReminderInfo(id: reminder.calendarItemIdentifier, title: title, due: due)
+    }
+
+    func pending() async throws -> [ReminderInfo] {
+        try await authorize()
+        let predicate = store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: nil)
+        let store = self.store
+        return await withCheckedContinuation { continuation in
+            store.fetchReminders(matching: predicate) { found in
+                let calendar = Calendar.current
+                continuation.resume(returning: (found ?? []).map {
+                    ReminderInfo(id: $0.calendarItemIdentifier, title: $0.title ?? "Untitled", due: $0.dueDateComponents.flatMap { calendar.date(from: $0) })
+                })
+            }
+        }
+    }
+
+    func complete(id: String) async throws {
+        try await authorize()
+        guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else { throw ToolError("That reminder is no longer there.") }
+        reminder.isCompleted = true
+        try store.save(reminder, commit: true)
+    }
+
+    #if DEBUG
+    /// Test helper: removes reminders a test run created (titles starting "Lolek test").
+    func removeTestReminders() async {
+        guard let list = try? await pending() else { return }
+        for item in list where item.title.hasPrefix("Lolek test") {
+            if let reminder = store.calendarItem(withIdentifier: item.id) as? EKReminder { try? store.remove(reminder, commit: true) }
+        }
+    }
+    #endif
 }
 
 // MARK: - Contacts

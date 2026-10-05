@@ -18,8 +18,8 @@ public enum DeviceToolbox {
             GetWeatherTool(weather: services.weather),
             SetAlarmTool(notifications: services.notifications, clock: clock),
             SetTimerTool(notifications: services.notifications, clock: clock),
-        ] + (services.alarms.map { [ListAlarmsTool(alarms: $0, clock: clock), CancelAlarmTool(alarms: $0, clock: clock)] as [any Tool] } ?? []) + [
-            AddReminderTool(notifications: services.notifications, clock: clock),
+        ] + (services.reminders.map { [ListRemindersTool(reminders: $0, clock: clock), CompleteReminderTool(reminders: $0, clock: clock)] as [any Tool] } ?? []) + (services.alarms.map { [ListAlarmsTool(alarms: $0, clock: clock), CancelAlarmTool(alarms: $0, clock: clock)] as [any Tool] } ?? []) + [
+            AddReminderTool(notifications: services.notifications, reminders: services.reminders, clock: clock),
             ListCalendarEventsTool(calendar: services.calendar, clock: clock),
             AddCalendarEventTool(calendar: services.calendar, clock: clock),
             RescheduleCalendarEventTool(calendar: services.calendar, clock: clock),
@@ -191,7 +191,14 @@ public struct AddReminderTool: Tool {
     public let tier = ToolTier.both
     public let risk = ToolRisk.writeLocal
     let notifications: any NotificationScheduling
+    let reminders: (any RemindersProviding)?
     let clock: ToolClock
+
+    public init(notifications: any NotificationScheduling, reminders: (any RemindersProviding)? = nil, clock: ToolClock) {
+        self.notifications = notifications
+        self.reminders = reminders
+        self.clock = clock
+    }
 
     struct Args: Decodable {
         let title: String
@@ -210,9 +217,69 @@ public struct AddReminderTool: Tool {
             throw ToolError("Could not understand the time \"\(args.when)\".")
         }
         guard date > clock.now() else { throw ToolError("That time is in the past.") }
-        try await notifications.schedule(ScheduledNotification(title: args.title, fireDate: date, repeats: args.repeats))
         let repeating = args.repeats.map { ", repeating \($0.rawValue)" } ?? ""
+        if let reminders {
+            // The real Reminders app: it shows up there, alerts at the time, and can be ticked off there.
+            let added = try await reminders.add(title: args.title, due: date, repeats: args.repeats)
+            return "Added \"\(added.title)\" to the Reminders app for \(ToolDates.describe(date, calendar: clock.calendar))\(repeating). It will alert then."
+        }
+        try await notifications.schedule(ScheduledNotification(title: args.title, fireDate: date, repeats: args.repeats))
         return "Reminder \"\(args.title)\" set for \(ToolDates.describe(date, calendar: clock.calendar))\(repeating)."
+    }
+}
+
+public struct ListRemindersTool: Tool {
+    public let name = "list_reminders"
+    public let description = LocalizedText(
+        en: "List the user's open reminders from the Reminders app.",
+        pl: "Wyświetl otwarte przypomnienia użytkownika z aplikacji Przypomnienia."
+    )
+    public let parametersSchema = #"{"type":"object","properties":{}}"#
+    public let tier = ToolTier.both
+    public let risk = ToolRisk.read
+    let reminders: any RemindersProviding
+    let clock: ToolClock
+
+    public init(reminders: any RemindersProviding, clock: ToolClock) { self.reminders = reminders; self.clock = clock }
+
+    public func run(argumentsJSON: String) async throws -> String {
+        let list = try await reminders.pending().sorted { ($0.due ?? .distantFuture) < ($1.due ?? .distantFuture) }
+        guard !list.isEmpty else { return "There are no open reminders." }
+        return list.prefix(25).map { item in
+            "- \(item.title)" + (item.due.map { " (\(ToolDates.describe($0, calendar: clock.calendar)))" } ?? "")
+        }.joined(separator: "\n") + (list.count > 25 ? "\n…and \(list.count - 25) more." : "")
+    }
+}
+
+public struct CompleteReminderTool: Tool {
+    public let name = "complete_reminder"
+    public let description = LocalizedText(
+        en: "Tick off a reminder in the Reminders app, found by words from its title.",
+        pl: "Odhacz przypomnienie w aplikacji Przypomnienia, znalezione po słowach z tytułu."
+    )
+    public let parametersSchema = #"{"type":"object","properties":{"title":{"type":"string"}},"required":["title"]}"#
+    public let tier = ToolTier.both
+    public let risk = ToolRisk.writeLocal
+    let reminders: any RemindersProviding
+    let clock: ToolClock
+
+    public init(reminders: any RemindersProviding, clock: ToolClock) { self.reminders = reminders; self.clock = clock }
+
+    struct Args: Decodable { let title: String }
+
+    public func run(argumentsJSON: String) async throws -> String {
+        let args = try ToolArguments.decode(Args.self, from: argumentsJSON)
+        let filler: Set<String> = ["the", "my", "a", "an", "to", "reminder", "przypomnienie"]
+        let words = args.title.folded.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init).filter { $0.count > 1 && !filler.contains($0) }
+        let list = try await reminders.pending()
+        let scored = words.isEmpty ? [] : list.map { item in (item, Double(words.filter { item.title.folded.contains($0) }.count) / Double(words.count)) }.filter { $0.1 >= 0.6 }
+        guard let best = scored.map(\.1).max() else {
+            throw ToolError("No open reminder matches \"\(args.title)\". Open reminders: " + (list.isEmpty ? "none" : list.prefix(8).map(\.title).joined(separator: "; ")))
+        }
+        let matches = scored.filter { $0.1 == best }.map(\.0)
+        guard matches.count == 1 else { throw ToolError("\(matches.count) reminders match: \(matches.map(\.title).joined(separator: "; ")). Ask which one.") }
+        try await reminders.complete(id: matches[0].id)
+        return "Ticked off \"\(matches[0].title)\" in the Reminders app."
     }
 }
 

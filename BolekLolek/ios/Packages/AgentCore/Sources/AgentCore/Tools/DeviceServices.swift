@@ -112,6 +112,24 @@ public protocol NotificationScheduling: Sendable {
     func schedule(_ notification: ScheduledNotification) async throws
 }
 
+public struct ReminderInfo: Sendable, Equatable, Identifiable {
+    public let id: String
+    public let title: String
+    public let due: Date?
+    public init(id: String, title: String, due: Date?) {
+        self.id = id
+        self.title = title
+        self.due = due
+    }
+}
+
+/// The iPhone's own Reminders app: what is added here shows up there, and what is ticked off there is gone from here.
+public protocol RemindersProviding: Sendable {
+    func add(title: String, due: Date, repeats: ScheduledNotification.Repeat?) async throws -> ReminderInfo
+    func pending() async throws -> [ReminderInfo]
+    func complete(id: String) async throws
+}
+
 public struct AlarmInfo: Sendable, Equatable, Identifiable {
     public let id: String
     public let title: String
@@ -144,6 +162,7 @@ public struct DeviceServices: Sendable {
     public let contacts: any ContactsProviding
     public let notifications: any NotificationScheduling
     public let alarms: (any AlarmManaging)?
+    public let reminders: (any RemindersProviding)?
     public let urlOpener: any URLOpening
     public let spending: SpendingStore
 
@@ -153,6 +172,7 @@ public struct DeviceServices: Sendable {
         contacts: any ContactsProviding,
         notifications: any NotificationScheduling,
         alarms: (any AlarmManaging)? = nil,
+        reminders: (any RemindersProviding)? = nil,
         urlOpener: any URLOpening,
         spending: SpendingStore
     ) {
@@ -161,6 +181,7 @@ public struct DeviceServices: Sendable {
         self.contacts = contacts
         self.notifications = notifications
         self.alarms = alarms
+        self.reminders = reminders
         self.urlOpener = urlOpener
         self.spending = spending
     }

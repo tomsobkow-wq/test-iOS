@@ -586,4 +586,24 @@ final class BolekFlowUITests: XCTestCase {
         app.launch()
         Thread.sleep(forTimeInterval: 6)
     }
+
+    /// Adds a reminder to the real Reminders app through chat, then ticks it off through chat. Cleaned up afterwards.
+    func testRemindersAppIsLinked() throws {
+        app.terminate()
+        app.launchEnvironment["BOLEK_DEBUG_CLEAN_TEST_EVENTS"] = "1"
+        app.launchEnvironment["BOLEK_DEBUG_TOOL_TRACE"] = "1"
+        app.launch()
+        Thread.sleep(forTimeInterval: 5)
+        answerSystemPrompts()
+        var seconds = askHandlingPrompts("Remind me to Lolek test drink water on 2026-10-06 at 18:00", timeout: 180)
+        Thread.sleep(forTimeInterval: 2)
+        answerSystemPrompts()
+        shot("120-reminder-added \(Int(seconds))s")
+        seconds = askHandlingPrompts("Tick off the Lolek test drink water reminder", timeout: 180)
+        shot("121-reminder-ticked \(Int(seconds))s")
+        app.terminate()
+        app.launchEnvironment["BOLEK_DEBUG_CLEAN_TEST_EVENTS"] = "1"
+        app.launch()
+        Thread.sleep(forTimeInterval: 6)
+    }
 }

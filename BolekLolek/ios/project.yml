@@ -36,6 +36,7 @@ targets:
         CFBundleLocalizations: [en, pl]
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        NSRemindersFullAccessUsageDescription: To add reminders to the Reminders app and tick them off when you ask.
         NSCalendarsFullAccessUsageDescription: To read your calendar and add events when you ask.
         NSContactsUsageDescription: To find phone numbers when you ask to text or call someone.
         NSLocationWhenInUseUsageDescription: To tell you the weather where you are.
